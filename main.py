@@ -1,7 +1,7 @@
 import json
 from Elements import *
 
-JSON = "schemetest (3) (pump).json"
+JSON = "schemes/schemetest (3) (pump).json"
 
 with open(JSON, "r", encoding="utf-8") as load_file:
     test_json = json.load(load_file)
