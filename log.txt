@@ -1,0 +1,22 @@
+self.pressureMesh[1] = {ndarray: (10,)} [490500.         503276.55289586 151507.3095618       0.,      0.              0.              0.              0.,      0.          98100.        ]
+density * soundSpeed * prevB + density * forwG = {float64: ()} 118896.03413990678
+self.pressureMesh[0][i+1] = {float64: ()} 216993.31413990678
+boundaryLeft = {float} 490500.00000000006
+boundaryRight = {float} 98100.0
+density = {int} 850
+forwB = {float64: ()} 3.2000000000000003e-06
+forwG = {float} 139.87448722341975
+forwPressure = {float64: ()} 216993.31413990678
+forwVelocity = {float64: ()} 0.01
+height = {float} 204.3009925242531
+heightMax = {float} 298.7261267226427
+heights = {list: 10} [295.52, 296.03319456687154, 298.7261267226427, 284.46776920751324, 280.38142555741223, 276.43664699346664, 259.4621789115454, 203.24046071515738, 204.3009925242531, 201.11]
+i = {int} 2
+prevB = {float64: ()} 3.2000000000000003e-06
+prevG = {float} -26.417664448114806
+prevPressure = {float64: ()} 120555.01478089759
+prevVelocity = {float64: ()} 0.01
+self = {Pipe} <Elements.Pipe object at 0x000000BF628656D0>
+soundSpeed = {int} 1000
+xPoint = {float} 8053.875555555553
+
