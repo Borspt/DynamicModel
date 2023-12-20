@@ -1,8 +1,7 @@
 import csv
 import math
 import numpy as np
-from math import floor
-from matplotlib import pyplot as plt
+import warnings
 
 g = 9.81
 
@@ -209,10 +208,10 @@ class Pipe:
 
         return
 
-    def calcStep(self, soundSpeed, density, boundaryLeft, boundaryRight, stepNumber, tau=1, showgraph=False):
-        if showgraph:
-            plt.ion()
-            fig = plt.figure()
+    def calcStep(self, soundSpeed, density, boundaryLeftPressure, boundaryRightPressure,
+                 boundaryLeftVelocity, boundaryRightVelocity, stepNumber, tau=1):
+
+
 
         '''
         Расчет для случая с резервуаром, устарел
@@ -236,6 +235,13 @@ class Pipe:
         #                                                                         + density * self.calcResistance(
         #                                                                     velocity=(
         #                                                                     self.velocityMesh[stepNumber - 1][-2]))))
+        '''
+                Заполнение краевых условий
+                '''
+        self.velocityMesh[stepNumber][0] = boundaryLeftVelocity
+        self.velocityMesh[stepNumber][-1] = boundaryRightVelocity
+        self.pressureMesh[stepNumber][0] = boundaryLeftPressure
+        self.pressureMesh[stepNumber][-1] = boundaryRightPressure
 
         for i in range(1, self.pressureMesh.shape[1] - 1):
             prevPressure = self.pressureMesh[stepNumber - 1][i - 1]
@@ -248,6 +254,7 @@ class Pipe:
             J_plus = prevPressure + density * soundSpeed * prevVelocity - self.kCorrection * density * g * (
                     self.heights[i] - self.heights[i - 1]) - soundSpeed * tau * self.kCorrection * (
                              density * self.calcResistance(velocity=(prevVelocity)))
+
             self.pressureMesh[stepNumber][i] = (J_plus + J_minus) / 2
             self.velocityMesh[stepNumber][i] = (J_plus - J_minus) / (2 * density * soundSpeed)
 
@@ -264,41 +271,7 @@ class Pipe:
             #                           density * soundSpeed * forwVelocity \
             #                           + density * soundSpeed * tau*self.kCorrection*prevB + density * forwG
 
-        print('Calc')
-        if showgraph:
-            time = 0
-            x = []
-            y = []
-            for el in self.profile:
-                x.append(el['distance'])
-                y.append(el['height'])
-            print(f'Y = {y}')
-            print(f'Heights = {self.heights}')
-            for step in range(1, stepNumber + 1):
-                time += tau
 
-                dotX = np.array(self.meshX) / 1000 + self.profile[0]['distance']
-                ph = []
-                for i in range(len(self.pressureMesh[0])):
-                    # ph.append((self.pressureMesh[step-1][i] + density*g*heights[i])/density/g)
-                    ph.append((self.pressureMesh[step - 1][i] + density * g * self.heights[i]) / density / g)
-                # print(ph)
-
-                plt.clf()
-                plt.plot(dotX, ph, 'blue', marker='o', label='Гидроуклон')
-                plt.plot(x, y, color='red', ls='--', label='Высота пролегания')
-                plt.scatter(dotX, self.heights, marker='o')
-                step_text = f'Шаг: {time:.1f}'
-                plt.text(0.95, 0.95, step_text, transform=plt.gca().transAxes, fontsize=10,
-                         verticalalignment='top', horizontalalignment='right')
-                plt.title(f'Обновляемый график {time:.1f} с')
-                plt.xlabel('Дистанция, км', fontsize=30)
-                plt.ylabel('Напор, м', fontsize=30)
-                plt.yticks(fontsize=20)
-                plt.xticks(fontsize=20)
-                plt.pause(tau / 1000)
-                # plt.show()
-                # plt.savefig('graph (3 tank + 2 fps) (20Rotor).png')
 
 
 class CheckValve:
@@ -339,10 +312,13 @@ class CheckValve:
 class Pump:
     rotor_objects = None
 
-    def __init__(self, elementId, neighbors, rotorId):
+    def __init__(self, elementId, neighbors, useConstHead, deltaHead, rotorId, height = None):
         self.id = elementId
         self.rotorId = rotorId
+        self.useConstHead = useConstHead
+        self.deltaHead = deltaHead
         self.neighbors = neighbors
+        self.height = height
 
     def find_rotor(self):
 
@@ -358,16 +334,45 @@ class Pump:
         self.deltaPressure = deltaP
         return deltaP
 
+    def calcBoundaries(self, tau, soundSpeed, density, forwG, prevG, forwVelocity, prevVelocity, forwPressure, prevPressure,
+                       forwPipeResistance, prevPipeResistance, forwKCorrection, prevKCorrection, forwDiameter, prevDiameter):
+        prevArea = math.pi * prevDiameter ** 2 / 4
+        forwArea = math.pi * forwDiameter ** 2 / 4
+
+        Jminus = forwPressure - density * soundSpeed * forwVelocity + forwKCorrection * density * g * forwG +\
+                 soundSpeed * tau * forwKCorrection * (density * forwPipeResistance)
+
+        Jplus = prevPressure + density * soundSpeed * prevVelocity - prevKCorrection * density * g * prevG - soundSpeed * tau * prevKCorrection * (
+                density * prevPipeResistance)
+
+        if self.useConstHead == True:
+
+            boundaryLeftVelocity = (self.deltaHead * density * g - (Jminus - Jplus)) / 2/density / soundSpeed
+            boundaryRightVelocity = boundaryLeftVelocity * prevArea / forwArea
+
+            boundaryLeftPressure = Jplus - density * soundSpeed * boundaryLeftVelocity
+            boundaryRightPressure = Jminus + density * soundSpeed * boundaryRightVelocity
+
+            return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
+
+        else:
+            warnings.warn(message='Not const head // TBD')
+
+
+
+
+
+
+
 
 class Rotor:
-    def __init__(self, elementId, nominal_frequency, real_frequency, user_choice, neighbors, density=None, flow=None):
+    def __init__(self, elementId, nominal_frequency, real_frequency, user_choice, density=None, flow=None):
         self.id = elementId
         self.user_choice = user_choice
         self.nominal_frequency = nominal_frequency
         self.real_frequency = real_frequency
         self.density = density
         self.flow = flow
-        self.neighbors = neighbors
 
     def deltaP(self, density, flow):
         global g
@@ -404,7 +409,10 @@ class Tank:
         if density is None:
             density = self.density
         global g
-        deltaP = (self.inHeight) * density * g
+        try:
+            deltaP = (self.inHeight) * density * g
+        except:
+            print(self.id)
 
         # return deltaP
         if self.start:
@@ -423,18 +431,18 @@ class Tank:
             boundaryLeftVelocity = None
             boundaryRightVelocity = 1 / (self.density * soundSpeed) * (
                     boundaryRightPressure + self.density * soundSpeed * pipeVelocity
-                    - pipeVelocity - tau * soundSpeed * pipeKCorrection * (
-                            self.density * g * (self.height - pipeHeight) / soundSpeed * tau
+                    - pipePressure - tau * soundSpeed * pipeKCorrection * (
+                            self.density * g * (self.height - pipeHeight) / soundSpeed / tau
                             + self.density * pipeResistance))
         else:
 
-            boundaryLeftPressure = -1 * self.deltaP()
+            boundaryLeftPressure = -self.deltaP()
             boundaryRightPressure = None
 
             boundaryLeftVelocity = 1 / (self.density * soundSpeed) * (pipePressure
-                                           + self.density * soundSpeed * pipeVelocity -
+                                           + self.density * soundSpeed * pipeVelocity - boundaryLeftPressure
                                            - soundSpeed * tau * pipeKCorrection * ( self.density * g *(self.height
-                                           - pipeHeight) /soundSpeed * tau + self.density * pipeResistance))
+                                           - pipeHeight) /soundSpeed /tau + self.density * pipeResistance))
             boundaryRightVelocity = None
         return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
 
