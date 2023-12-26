@@ -281,14 +281,15 @@ for stepNumber in range(1, steps + 1):
 
         boundaryConditions[boundaryElement.id] = conditions
 
-        for pipe in pipeObjects.values():
-            leftNeighbor = pipe.neighbors[0]
-            rightNeighbor = pipe.neighbors[1]
-            boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
-                getBoundaryConditions(leftNeighbor=leftNeighbor, rightNeighbor=rightNeighbor, pipeId=pipe.id)
-            pipe.calcStep(soundSpeed=SOUNDSPEED, density=DENSITY, boundaryLeftVelocity=boundaryLeftVelocity,
-                          boundaryRightVelocity=boundaryRightVelocity, boundaryLeftPressure=boundaryLeftPressure,
-                          boundaryRightPressure=boundaryRightPressure, stepNumber=stepNumber, tau=TAU)
+    for pipe in pipeObjects.values():
+        print(pipe)
+        leftNeighbor = pipe.neighbors[0]
+        rightNeighbor = pipe.neighbors[1]
+        boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
+            getBoundaryConditions(leftNeighbor=leftNeighbor, rightNeighbor=rightNeighbor, pipeId=pipe.id)
+        pipe.calcStep(soundSpeed=SOUNDSPEED, density=DENSITY, boundaryLeftVelocity=boundaryLeftVelocity,
+                      boundaryRightVelocity=boundaryRightVelocity, boundaryLeftPressure=boundaryLeftPressure,
+                      boundaryRightPressure=boundaryRightPressure, stepNumber=stepNumber, tau=TAU)
 
 if SHOW_GRAPH:
     plt.ion()
