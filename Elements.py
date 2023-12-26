@@ -191,6 +191,7 @@ class Pipe:
         Расчет высот соответствующих координате X
         '''
         heights = []
+        # heights = [321.95] * len(self.meshX)
         heights.append(self.profile[0]['height'])
         for xPoint in self.meshX[1:-1]:
             height = self.__interpolation__(xPoint)
@@ -248,12 +249,14 @@ class Pipe:
             forwPressure = self.pressureMesh[stepNumber - 1][i + 1]
             prevVelocity = self.velocityMesh[stepNumber - 1][i - 1]
             forwVelocity = self.velocityMesh[stepNumber - 1][i + 1]
-            J_minus = forwPressure - density * soundSpeed * forwVelocity + self.kCorrection * density * g * (
-                    self.heights[i + 1] - self.heights[i]) + soundSpeed * tau * self.kCorrection * (
-                              density * self.calcResistance(velocity=(forwVelocity)))
-            J_plus = prevPressure + density * soundSpeed * prevVelocity - self.kCorrection * density * g * (
-                    self.heights[i] - self.heights[i - 1]) - soundSpeed * tau * self.kCorrection * (
-                             density * self.calcResistance(velocity=(prevVelocity)))
+            forwB = self.calcResistance(velocity=(forwVelocity))
+            prevB = self.calcResistance(velocity=(prevVelocity))
+            J_minus = forwPressure - density * soundSpeed * forwVelocity +\
+                       density * g * (self.heights[i + 1] - self.heights[i]) +\
+                      soundSpeed * tau * self.kCorrection * (density * soundSpeed*forwB)
+            J_plus = prevPressure + density * soundSpeed * prevVelocity\
+                     - density * g * (self.heights[i] - self.heights[i - 1]) -\
+                     soundSpeed * tau * self.kCorrection * (density * soundSpeed*prevB)
 
             self.pressureMesh[stepNumber][i] = (J_plus + J_minus) / 2
             self.velocityMesh[stepNumber][i] = (J_plus - J_minus) / (2 * density * soundSpeed)
