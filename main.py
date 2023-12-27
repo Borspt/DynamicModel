@@ -188,21 +188,22 @@ def getBoundaryConditions(leftNeighbor, rightNeighbor, pipeId):
     return boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure
 
 
-JSON = "schemes/schemetest (3) (2tanks).json"
+JSON = "schemes/schemetest (3) (pump).json"
 
 with open(JSON, "r", encoding="utf-8") as load_file:
     test_json = json.load(load_file)
 
 elements_dict = {}
 
-PROCESSTIME = 150
-TAU = 0.1
+PROCESSTIME = 600
+TAU = 0.5
 SOUNDSPEED = 1000
 DENSITY = 850
 INITIAL_VELOCITY = 0.01
 INITIAL_PRESSURE = g * 10000
 SHOW_GRAPH = True
-USER_CHOICE = [123]
+showSpeed = 100
+USER_CHOICE = [123, 129]
 
 all_objects, pipeObjects, boundaryObjects = init_objects()
 
@@ -252,10 +253,10 @@ for stepNumber in range(1, steps + 1):
             rightNeighborId = boundaryElement.neighbors[1]
             leftPipe = pipeObjects[leftNeighborId]
             rightPipe = pipeObjects[rightNeighborId]
-            forwVelocity = rightPipe.velocityMesh[stepNumber - 1][0]
-            prevVelocity = leftPipe.velocityMesh[stepNumber - 1][-1]
-            forwPressure = rightPipe.pressureMesh[stepNumber - 1][0]
-            prevPressure = leftPipe.pressureMesh[stepNumber - 1][-1]
+            forwVelocity = rightPipe.velocityMesh[stepNumber - 1][1]
+            prevVelocity = leftPipe.velocityMesh[stepNumber - 1][-2]
+            forwPressure = rightPipe.pressureMesh[stepNumber - 1][1]
+            prevPressure = leftPipe.pressureMesh[stepNumber - 1][-2]
             forwDiameter = leftPipe.innerDiameter
             prevDiameter = leftPipe.innerDiameter
             boundaryHeight = boundaryElement.height
@@ -340,7 +341,7 @@ if SHOW_GRAPH:
         plt.ylabel('Напор, м', fontsize=30)
         plt.yticks(fontsize=20)
         plt.xticks(fontsize=20)
-        plt.pause(TAU)
+        plt.pause(TAU/showSpeed)
         # plt.show()
         # plt.savefig('graph (3 tank + 2 fps) (20Rotor).png')
 
