@@ -7,7 +7,7 @@
                 "id": 66,
                 "rotorId": 645,
                 "useConstHead": 1,
-                "deltaHead": 0,
+                "deltaHead": 100,
                 "height": 326.75,
                 "position": [
                     {
@@ -184,13 +184,13 @@
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 43.031238,
-                "height": 329.42,
+                "height": 326.75,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 43.22843,
-                "height": 327.88,
+                "height": 326.75,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
@@ -206,7 +206,7 @@
                         "layerId": "0",
                         "neighborsId": [
                             371,
-                            10000
+                            66
                         ],
                         "turnCoordinates": {
                             "x": [],
@@ -239,13 +239,13 @@
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 44.024775,
-                "height": 326.66,
+                "height": 326.75,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 44.309498,
-                "height": 316.02,
+                "height": 326.75,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
