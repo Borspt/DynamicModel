@@ -251,12 +251,14 @@ class Pipe:
             forwVelocity = self.velocityMesh[stepNumber - 1][i + 1]
             forwB = self.calcResistance(velocity=(forwVelocity))
             prevB = self.calcResistance(velocity=(prevVelocity))
+            forwG = self.heights[i + 1] - self.heights[i]
+            prevG = self.heights[i] - self.heights[i - 1]
             J_minus = forwPressure - density * soundSpeed * forwVelocity +\
-                       density * g * (self.heights[i + 1] - self.heights[i]) +\
-                      soundSpeed * tau * self.kCorrection * (density * soundSpeed*forwB)
+                       density * g * forwG +\
+                      soundSpeed * tau * self.kCorrection * (density *forwB)
             J_plus = prevPressure + density * soundSpeed * prevVelocity\
-                     - density * g * (self.heights[i] - self.heights[i - 1]) -\
-                     soundSpeed * tau * self.kCorrection * (density * soundSpeed*prevB)
+                     - density * g * prevG -\
+                     soundSpeed * tau * self.kCorrection * (density *prevB)
 
             self.pressureMesh[stepNumber][i] = (J_plus + J_minus) / 2
             self.velocityMesh[stepNumber][i] = (J_plus - J_minus) / (2 * density * soundSpeed)
@@ -342,7 +344,7 @@ class Pump:
         prevArea = math.pi * prevDiameter ** 2 / 4
         forwArea = math.pi * forwDiameter ** 2 / 4
 
-        Jminus = forwPressure - density * soundSpeed * forwVelocity + forwKCorrection * density * g * forwG +\
+        Jminus = forwPressure - density * soundSpeed * forwVelocity +  density * g * forwG +\
                  soundSpeed * tau * forwKCorrection * (density * forwPipeResistance)
 
         Jplus = prevPressure + density * soundSpeed * prevVelocity - prevKCorrection * density * g * prevG - soundSpeed * tau * prevKCorrection * (
