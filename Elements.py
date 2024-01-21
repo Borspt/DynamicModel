@@ -2,12 +2,33 @@ import csv
 import math
 import numpy as np
 import warnings
+import os
 
 g = 9.81
 
 
+def invariantMinus(forwPressure, density, soundSpeed, forwVelocity, kCorrection, tau, forwResistance, gravityFactor):
+    invariant = forwPressure - density * soundSpeed * forwVelocity + density * g * gravityFactor\
+                + soundSpeed * tau * kCorrection * (density * forwResistance)
+    return invariant
+
+
+def invariantPlus(prevPressure, density, soundSpeed, prevVelocity, kCorrection, tau, prevResistance, gravityFactor):
+    invariant = prevPressure + density * soundSpeed * prevVelocity - density * g * gravityFactor \
+                - soundSpeed * tau * kCorrection * (density * prevResistance)
+    return invariant
+
+
+# J_minus = forwPressure - density * soundSpeed * forwVelocity +\
+#                        density * g * forwG +\
+#                       soundSpeed * tau * self.kCorrection * (density *forwB)
+# J_plus = prevPressure + density * soundSpeed * prevVelocity\
+#                      - density * g * prevG -\
+#                      soundSpeed * tau * self.kCorrection * (density *prevB)
+
+
 class BlockValve:
-    def __init__(self, elementId, neighbors, status=1, fullFlow=1, kvFile=None):
+    def __init__(self, elementId, neighbors,height, status=1, fullFlow=1, kvFile=None):
         self.id = elementId
         self.fullFlow = fullFlow
         self.status = status
@@ -15,6 +36,7 @@ class BlockValve:
             self.UploadKvFile(kvFile)
         self.kvFile = kvFile
         self.neighbors = neighbors
+        self.height = height
 
     def deltaP(self, density, flow):
         self.deltaPressure = 0
@@ -56,12 +78,25 @@ class BlockValve:
                 return curFlow
 
     def calcBoundaries(self, tau, soundSpeed, density, forwG, prevG, forwVelocity, prevVelocity, forwPressure,
-                       prevPressure, prevResistance, forwResistance, forwKCorrection, prevKCorrection):
+                       prevPressure, prevPipeResistance, forwPipeResistance, forwKCorrection, prevKCorrection,
+                       prevDiameter, forwDiameter):
 
-        Jminus = forwPressure - density * soundSpeed * forwVelocity + pipe.kCorrection * density * g * forwG + soundSpeed * tau * pipe.kCorrection * (
-                density * self.calcResistance(velocity=(forwVelocity)))
-        Jplus = prevPressure + density * soundSpeed * prevVelocity - pipe.kCorrection * density * g * prevG - soundSpeed * tau * pipe.kCorrection * (
-                density * self.calcResistance(velocity=(prevVelocity)))
+        Jminus = invariantMinus(forwPressure=forwPressure, density=density, soundSpeed=soundSpeed,
+                                forwVelocity=forwVelocity, kCorrection=forwKCorrection, tau=tau,
+                                forwResistance=forwPipeResistance, gravityFactor=forwG)
+        Jplus = invariantPlus(prevPressure=prevPressure, density=density, soundSpeed=soundSpeed,
+                              prevVelocity=prevVelocity, kCorrection=prevKCorrection, tau=tau,
+                              prevResistance=prevPipeResistance, gravityFactor=prevG)
+
+        velocity = (Jplus - Jminus) / (2 * density * soundSpeed)
+
+        boundaryLeftVelocity = velocity
+        boundaryRightVelocity = velocity
+        boundaryLeftPressure = (Jplus + Jminus) / 2
+
+        boundaryRightPressure = (Jplus + Jminus) / 2
+
+        return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
 
 
 class FilterStrainer:
@@ -83,9 +118,9 @@ class FilterStrainer:
 
 
 class Pipe:
-    def __init__(self, elementId, innerDiameter, length, profile, start_height, end_height, neighbors, roughness=0.0002,
-                 losses='auto',
-                 viscosity=1e-5):
+    def __init__(self, elementId, innerDiameter, length, profile, start_height, end_height, neighbors, pipeOut,
+                 isTechnological,technologicalResistance=0, roughness=0.0002, losses='auto', viscosity=1e-3):
+
         self.velocityMesh = None
         self.id = elementId
         self.innerDiameter = innerDiameter
@@ -98,6 +133,9 @@ class Pipe:
         self.roughness = roughness
         self.profile = profile
         self.neighbors = neighbors
+        self.pipeOut = pipeOut
+        self.isTechnological = isTechnological
+        self.technologicalResistance = technologicalResistance
 
     def calcLambda(self, flow, useFlow=True):
         if useFlow:
@@ -110,7 +148,7 @@ class Pipe:
             print('Id', self.id)
         # print(self.rheinolds)
         if self.rheinolds == 0:
-            print('Id', self.id)
+            print('Rheinolds = 0 Id', self.id)
             self.rheinolds = 0.001
 
         if (self.losses == 'Stokes') or ((self.losses == 'auto') and (self.rheinolds <= 2000)):
@@ -139,7 +177,16 @@ class Pipe:
             return _lambda
         except:
             print(self.rheinolds)
-
+    def calcResistance(self, velocity):
+        if self.isTechnological:
+            resistance = self.technologicalResistance
+        else:
+            _lambda = self.calcLambda(velocity, useFlow=False)
+            try:
+                resistance = _lambda * velocity * abs(velocity) / (2 * self.innerDiameter)
+            except Exception as e:
+                print(e)
+        return resistance
     def deltaP(self, density, flow):
         global g
         _lambda = self.calcLambda(flow)
@@ -153,11 +200,15 @@ class Pipe:
         return deltaP
 
     def __calcMeshX__(self, soundSpeed, tau):
-        self.meshCountX = math.floor(self.length / soundSpeed / tau)
-        self.lengthCalc = self.meshCountX * soundSpeed * tau
+        if self.length > 0.5 * soundSpeed * tau:
+            self.meshCountX = math.floor(self.length / soundSpeed / tau) + 1
+        else:
+            self.meshCountX = 3
+
+        self.lengthCalc = (self.meshCountX-1) * soundSpeed * tau
         self.kCorrection = self.length / self.lengthCalc
         self.meshDeltaX = soundSpeed * tau * self.kCorrection
-        self.meshX = [x * self.meshDeltaX for x in range(self.meshCountX)]
+        self.meshX = [x * self.meshDeltaX for x in range(self.meshCountX-1)]
         self.meshX.append(self.length)
 
     def __interpolation__(self, xPoint):
@@ -177,10 +228,7 @@ class Pipe:
             i += 1
         return None
 
-    def calcResistance(self, velocity):
-        _lambda = self.calcLambda(velocity, useFlow=False)
-        resistance = _lambda * velocity * abs(velocity) / (2 * self.innerDiameter)
-        return resistance
+
 
     def initMesh(self, soundSpeed, steps, tau):
         '''
@@ -192,14 +240,20 @@ class Pipe:
         '''
         heights = []
         # heights = [321.95] * len(self.meshX)
-        heights.append(self.profile[0]['height'])
-        for xPoint in self.meshX[1:-1]:
-            height = self.__interpolation__(xPoint)
-            if height is None:
-                print('None height')
-            heights.append(height)
-        heights.append(self.profile[-1]['height'])
-        self.heights = heights
+        if self.isTechnological:
+            heights.append(self.start_height)
+            heights.append((self.start_height + self.end_height)/2)
+            heights.append(self.end_height)
+            self.heights = heights
+        else:
+            heights.append(self.profile[0]['height'])
+            for xPoint in self.meshX[1:-1]:
+                height = self.__interpolation__(xPoint)
+                if height is None:
+                    print(f'None height pipeId{self.id}')
+                heights.append(height)
+            heights.append(self.profile[-1]['height'])
+            self.heights = heights
 
         '''
         Инициализация сетки
@@ -211,8 +265,6 @@ class Pipe:
 
     def calcStep(self, soundSpeed, density, boundaryLeftPressure, boundaryRightPressure,
                  boundaryLeftVelocity, boundaryRightVelocity, stepNumber, tau=1):
-
-
 
         '''
         Расчет для случая с резервуаром, устарел
@@ -248,20 +300,37 @@ class Pipe:
             prevPressure = self.pressureMesh[stepNumber - 1][i - 1]
             forwPressure = self.pressureMesh[stepNumber - 1][i + 1]
             prevVelocity = self.velocityMesh[stepNumber - 1][i - 1]
+            curVelocity = self.velocityMesh[stepNumber - 1][i]
             forwVelocity = self.velocityMesh[stepNumber - 1][i + 1]
-            forwB = self.calcResistance(velocity=(forwVelocity))
-            prevB = self.calcResistance(velocity=(prevVelocity))
+
             forwG = self.heights[i + 1] - self.heights[i]
             prevG = self.heights[i] - self.heights[i - 1]
-            J_minus = forwPressure - density * soundSpeed * forwVelocity +\
-                       density * g * forwG +\
-                      soundSpeed * tau * self.kCorrection * (density *forwB)
-            J_plus = prevPressure + density * soundSpeed * prevVelocity\
-                     - density * g * prevG -\
-                     soundSpeed * tau * self.kCorrection * (density *prevB)
+            if self.isTechnological:
+                forwB = 0
+                prevB = 0
+            else:
+                forwB = self.calcResistance(velocity=(forwVelocity))
+                prevB = self.calcResistance(velocity=(prevVelocity))
 
-            self.pressureMesh[stepNumber][i] = (J_plus + J_minus) / 2
-            self.velocityMesh[stepNumber][i] = (J_plus - J_minus) / (2 * density * soundSpeed)
+            if self.isTechnological:
+
+                Jminus = forwPressure - density * soundSpeed * forwVelocity + density * g * forwG
+
+                Jplus = prevPressure + density * soundSpeed * prevVelocity - density * g * prevG
+
+
+            else:
+
+                Jminus = invariantMinus(forwPressure=forwPressure, density=density, soundSpeed=soundSpeed,
+                                        forwVelocity=forwVelocity, kCorrection=self.kCorrection, tau=tau,
+                                        forwResistance=forwB, gravityFactor=forwG)
+                Jplus = invariantPlus(prevPressure=prevPressure, density=density, soundSpeed=soundSpeed,
+                                      prevVelocity=prevVelocity, kCorrection=self.kCorrection, tau=tau,
+                                      prevResistance=prevB, gravityFactor=prevG)
+
+
+            self.pressureMesh[stepNumber][i] = (Jplus + Jminus) / 2
+            self.velocityMesh[stepNumber][i] = (Jplus - Jminus) / (2 * density * soundSpeed)
 
             # prevB = self.calcResistance(velocity=prevVelocity)
             # forwB = self.calcResistance(velocity=(forwVelocity))
@@ -277,14 +346,14 @@ class Pipe:
             #                           + density * soundSpeed * tau*self.kCorrection*prevB + density * forwG
 
 
-
-
 class CheckValve:
-    def __init__(self, elementId, neighbors, flow=0):
+    def __init__(self, elementId, neighbors, height, resistanceCoefficient=0, flow=0):
         self.id = elementId
         self.flow = flow
         self.deltaPressure = 0
+        self.height = height
         self.neighbors = neighbors
+        self.resistanceCoefficient = resistanceCoefficient
 
     def deltaP(self, density, flow):
 
@@ -297,27 +366,34 @@ class CheckValve:
         self.deltaPressure = deltaP
         return deltaP
 
-    def calcBoundaries(self, soundSpeed, tau, density, prevVelocity, forwVelocity, prevPressure, forwPressure, prevG,
-                       forwG, resistanceCoefficient,
-                       kCorrection):
+    def calcBoundaries(self, tau, soundSpeed, density, forwG, prevG, forwVelocity, prevVelocity, forwPressure,
+                       prevPressure, prevPipeResistance, forwPipeResistance, forwKCorrection, prevKCorrection,
+                       prevDiameter, forwDiameter):
 
-        Jminus = forwPressure - density * soundSpeed * forwVelocity + self.kCorrection * density * g * forwG + soundSpeed * tau * self.kCorrection * (
-                density * resistanceCoefficient)
-        Jplus = prevPressure + density * soundSpeed * prevVelocity - self.kCorrection * density * g * prevG - soundSpeed * tau * self.kCorrection * (
-                density * resistanceCoefficient)
+        Jminus = invariantMinus(forwPressure=forwPressure, density=density, soundSpeed=soundSpeed,
+                                forwVelocity=forwVelocity, kCorrection=forwKCorrection, tau=tau,
+                                forwResistance=forwPipeResistance, gravityFactor=forwG)
+        Jplus = invariantPlus(prevPressure=prevPressure, density=density, soundSpeed=soundSpeed,
+                              prevVelocity=prevVelocity, kCorrection=prevKCorrection, tau=tau,
+                              prevResistance=prevPipeResistance, gravityFactor=prevG)
+
         velocity = (Jplus - Jminus) / (density * soundSpeed) / (
-                1 + math.sqrt(1 + resistanceCoefficient / 2 * density * soundSpeed * (Jplus - Jminus)))
-        if velocity:
-            boundaryLeftV = velocity
-            boundaryRightV = velocity
+                1 + math.sqrt(1 + self.resistanceCoefficient / 2 * density * soundSpeed * (Jplus - Jminus)))
+        if velocity >= 0:
+            boundaryLeftVelocity = velocity
+            boundaryRightVelocity = velocity
+        else:
+            boundaryLeftVelocity = 0
+            boundaryRightVelocity = velocity
+        boundaryLeftPressure = boundaryRightPressure = (Jplus + Jminus) / 2
 
-        return
+        return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
 
 
 class Pump:
     rotor_objects = None
 
-    def __init__(self, elementId, neighbors, useConstHead, deltaHead, rotorId, height = None):
+    def __init__(self, elementId, neighbors, useConstHead, deltaHead, rotorId, height=None):
         self.id = elementId
         self.rotorId = rotorId
         self.useConstHead = useConstHead
@@ -339,20 +415,23 @@ class Pump:
         self.deltaPressure = deltaP
         return deltaP
 
-    def calcBoundaries(self, tau, soundSpeed, density, forwG, prevG, forwVelocity, prevVelocity, forwPressure, prevPressure,
-                       forwPipeResistance, prevPipeResistance, forwKCorrection, prevKCorrection, forwDiameter, prevDiameter):
+    def calcBoundaries(self, tau, soundSpeed, density, forwG, prevG, forwVelocity, prevVelocity, forwPressure,
+                       prevPressure,
+                       forwPipeResistance, prevPipeResistance, forwKCorrection, prevKCorrection, forwDiameter,
+                       prevDiameter):
         prevArea = math.pi * prevDiameter ** 2 / 4
         forwArea = math.pi * forwDiameter ** 2 / 4
 
-        Jminus = forwPressure - density * soundSpeed * forwVelocity +  density * g * forwG +\
-                 soundSpeed * tau * forwKCorrection * (density * forwPipeResistance)
-
-        Jplus = prevPressure + density * soundSpeed * prevVelocity - prevKCorrection * density * g * prevG - soundSpeed * tau * prevKCorrection * (
-                density * prevPipeResistance)
+        Jminus = invariantMinus(forwPressure=forwPressure, density=density, soundSpeed=soundSpeed,
+                                forwVelocity=forwVelocity, kCorrection=forwKCorrection, tau=tau,
+                                forwResistance=forwPipeResistance, gravityFactor=forwG)
+        Jplus = invariantPlus(prevPressure=prevPressure, density=density, soundSpeed=soundSpeed,
+                              prevVelocity=prevVelocity, kCorrection=prevKCorrection, tau=tau,
+                              prevResistance=prevPipeResistance, gravityFactor=prevG)
 
         if self.useConstHead == True:
 
-            boundaryLeftVelocity = (self.deltaHead * density * g - (Jminus - Jplus)) / 2/density / soundSpeed
+            boundaryLeftVelocity = (self.deltaHead * density * g - (Jminus - Jplus)) / 2 / density / soundSpeed
             boundaryRightVelocity = boundaryLeftVelocity * prevArea / forwArea
 
             boundaryLeftPressure = Jplus - density * soundSpeed * boundaryLeftVelocity
@@ -362,12 +441,6 @@ class Pump:
 
         else:
             warnings.warn(message='Not const head // TBD')
-
-
-
-
-
-
 
 
 class Rotor:
@@ -391,13 +464,62 @@ class Rotor:
 
 
 class Branch:
-    def __init__(self, elementId, neighbors):
+    def __init__(self, elementId, height, neighbors):
         self.id = elementId
         self.deltaPressure = 0
+        self.height = height
         self.neighbors = neighbors
 
     def deltaP(self, density, flow):
         return 0
+
+    def calcBoundaries(self, tau, soundSpeed, density, gravityFactor, velocity, pressure, diameter,
+                       resistance, kCorrection, pipeObjects):
+        pipeOutMask = [0, 0, 0]
+
+        calcTwoPipeFlow = False
+        pipeFlowIndex = []
+        boundaryPressure = [None, None, None]
+        boundaryVelocity = [None, None, None]
+        directions = [None, None, None]
+        # Шаг 3
+        characteristic = [None, None, None]
+        for i in range(len(self.neighbors)):
+            pipe = pipeObjects[i]
+            if pipe.pipeOut:
+                directions[i] = -1
+                characteristic[i] = invariantMinus(forwPressure=pressure[i], density=density[i],
+                                                   soundSpeed=soundSpeed[i],
+                                                   forwVelocity=velocity[i], kCorrection=kCorrection[i], tau=tau,
+                                                   forwResistance=resistance[i], gravityFactor=gravityFactor[i])
+            else:
+                directions[i] = 1
+                characteristic[i] = invariantPlus(prevPressure=pressure[i], density=density[i],
+                                                  soundSpeed=soundSpeed[i],
+                                                  prevVelocity=velocity[i], kCorrection=kCorrection[i], tau=tau,
+                                                  prevResistance=resistance[i], gravityFactor=gravityFactor[i])
+
+        boundaryVelocity[2] = directions[2] * ((density[1] * soundSpeed[1]
+                                                * math.pi * diameter[0] ** 2 / 4 * (
+                                                        characteristic[2] - characteristic[0]) +
+                                                density[0] * soundSpeed[0] * math.pi * diameter[1] ** 2 / 4 * (
+                                                        characteristic[2] - characteristic[1])) /
+                                               (density[0] * soundSpeed[0] * density[1] * soundSpeed[1] * math.pi *
+                                                diameter[2] ** 2 / 4 +
+                                                density[1] * soundSpeed[1] * density[2] * soundSpeed[2] * math.pi *
+                                                diameter[0] ** 2 / 4 +
+                                                density[0] * soundSpeed[0] * density[2] * soundSpeed[2] * math.pi *
+                                                diameter[1] ** 2 / 4))
+
+        boundaryPressure[0] = boundaryPressure[1] = boundaryPressure[2] = characteristic[2] - \
+                                                                          directions[2] * density[2] * soundSpeed[2] * \
+                                                                          boundaryVelocity[2]
+
+        boundaryVelocity[0] = (characteristic[0] - boundaryPressure[0]) / (directions[0] * density[0] * soundSpeed[0])
+
+        boundaryVelocity[1] = (characteristic[1] - boundaryPressure[1]) / (directions[1] * density[1] * soundSpeed[1])
+
+        return boundaryPressure, boundaryVelocity
 
 
 class Tank:
@@ -434,6 +556,65 @@ class Tank:
             boundaryRightPressure = self.deltaP()
 
             boundaryLeftVelocity = None
+            Jminus = invariantMinus(forwPressure=pipePressure, density=self.density, soundSpeed=soundSpeed
+                                    , forwVelocity=pipeVelocity, kCorrection=pipeKCorrection, tau=tau,
+                                    forwResistance=pipeResistance, gravityFactor=(pipeHeight - self.height))
+
+
+            boundaryRightVelocity = ( boundaryRightPressure - Jminus) / (self.density * soundSpeed)
+
+
+        else:
+
+            boundaryLeftPressure = -self.deltaP()
+            boundaryRightPressure = None
+
+            Jplus = invariantPlus(prevPressure=pipePressure, density=self.density, soundSpeed=soundSpeed
+                                  , prevVelocity=pipeVelocity, kCorrection=pipeKCorrection, tau=tau,
+                                  prevResistance=pipeResistance, gravityFactor=(self.height - pipeHeight))
+
+            boundaryLeftVelocity = (Jplus - boundaryLeftPressure) / (self.density * soundSpeed)
+
+            boundaryRightVelocity = None
+
+        return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
+
+
+class FlowPressureSetter:
+    def __init__(self, elementId, height, density, neighbors, start=True, dP=0, inHeight=0, flow=0):
+        self.id = elementId
+        self.density = density
+        self.flow = flow
+        self.inHeight = inHeight
+        self.deltaPressure = dP
+        self.height = height
+        self.neighbors = neighbors
+        self.start = start
+
+    def deltaP(self, density=None):
+        if density is None:
+            density = self.density
+        global g
+        try:
+            deltaP = (self.inHeight) * density * g
+        except:
+            print(self.id)
+
+        # return deltaP
+        if self.start:
+            self.deltaPressure = deltaP
+            return deltaP
+        else:
+            self.deltaPressure = -deltaP
+            return -deltaP
+
+    def calcBoundaries(self, tau, soundSpeed, pipeHeight, pipeVelocity, pipePressure, pipeResistance, pipeKCorrection):
+
+        if self.start:
+            boundaryLeftPressure = None
+            boundaryRightPressure = self.deltaP()
+
+            boundaryLeftVelocity = None
             boundaryRightVelocity = 1 / (self.density * soundSpeed) * (
                     boundaryRightPressure + self.density * soundSpeed * pipeVelocity
                     - pipePressure - tau * soundSpeed * pipeKCorrection * (
@@ -445,28 +626,12 @@ class Tank:
             boundaryRightPressure = None
 
             boundaryLeftVelocity = 1 / (self.density * soundSpeed) * (pipePressure
-                                           + self.density * soundSpeed * pipeVelocity - boundaryLeftPressure
-                                           - soundSpeed * tau * pipeKCorrection * ( self.density * g *(self.height
-                                           - pipeHeight) /soundSpeed /tau + self.density * pipeResistance))
+                                                                      + self.density * soundSpeed * pipeVelocity - boundaryLeftPressure
+                                                                      - soundSpeed * tau * pipeKCorrection * (
+                                                                              self.density * g * (self.height
+                                                                                                  - pipeHeight) / soundSpeed / tau + self.density * pipeResistance))
             boundaryRightVelocity = None
         return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
-
-class FlowPressureSetter:
-    def __init__(self, elementId, height, density, neighbors, start=True, dP=0, inHeight=0, flow=0):
-        self.id = elementId
-        self.density = density
-        self.flow = flow
-        self.inHeight = inHeight
-        self.deltaPressure = dP
-        self.height = height
-        self.neighbors = neighbors
-
-    def deltaP(self, density):
-        global g
-        deltaPressure = (self.inHeight) * density * g
-        self.deltaPressure = deltaPressure
-
-        return deltaPressure
 
 
 class Regulator:
