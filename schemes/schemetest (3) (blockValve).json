@@ -192,12 +192,6 @@
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 43.512247,
-                "height": 326.75,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
                 "maxPressure": 2000000}],
                 "position": [
                     {

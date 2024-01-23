@@ -20,7 +20,7 @@ INITIAL_VELOCITY = 0.01
 INITIAL_PRESSURE = g * 10000
 SHOW_GRAPH = True
 showSpeed = 100
-USER_CHOICE = [2000, 1953, 3005, 4000]
+USER_CHOICE = [2000, 1953, 3000, 3002, 4000]
 graph_ylim = 10
 startStep = 0
 
@@ -95,7 +95,7 @@ for stepNumber in range(1, steps + 1):
             for pipeId in boundaryElement.neighbors:
                 pipe = pipeObjects[pipeId]
                 pipeNeighbors.append(pipe)
-                if pipe.pipeOut:
+                if pipeId in boundaryElement.neighborsOut:
                     pipeVelocity = pipe.velocityMesh[stepNumber - 1][1]
                     pipeVelocityList.append(pipeVelocity)
                     pipePressureList.append(pipe.pressureMesh[stepNumber - 1][1])
@@ -272,11 +272,12 @@ if SHOW_GRAPH:
         plt.xticks(fontsize=20)
         end_time = time.time()
         graph_time = end_time - time_start
-        # print(f'Время на отображение {graph_time} c')
+        print(f'Время на отображение {graph_time} c')
         if (TAU / showSpeed - graph_time) > 0:
             plt.pause(TAU / showSpeed - graph_time)
         else:
             plt.pause(0.00001)
+        # plt.pause(1)
 
     plt.show()
     # plt.savefig('graph (3 tank + 2 fps) (20Rotor).png')

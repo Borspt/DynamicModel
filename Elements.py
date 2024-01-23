@@ -118,7 +118,7 @@ class FilterStrainer:
 
 
 class Pipe:
-    def __init__(self, elementId, innerDiameter, length, profile, start_height, end_height, neighbors, pipeOut,
+    def __init__(self, elementId, innerDiameter, length, profile, start_height, end_height, neighbors,
                  isTechnological,technologicalResistance=0, roughness=0.0002, losses='auto', viscosity=1e-3):
 
         self.velocityMesh = None
@@ -133,7 +133,6 @@ class Pipe:
         self.roughness = roughness
         self.profile = profile
         self.neighbors = neighbors
-        self.pipeOut = pipeOut
         self.isTechnological = isTechnological
         self.technologicalResistance = technologicalResistance
 
@@ -264,7 +263,7 @@ class Pipe:
         return
 
     def calcStep(self, soundSpeed, density, boundaryLeftPressure, boundaryRightPressure,
-                 boundaryLeftVelocity, boundaryRightVelocity, stepNumber, tau=1):
+                 boundaryLeftVelocity, boundaryRightVelocity, stepNumber, tau):
 
         '''
         Расчет для случая с резервуаром, устарел
@@ -464,11 +463,13 @@ class Rotor:
 
 
 class Branch:
-    def __init__(self, elementId, height, neighbors):
+    def __init__(self, elementId, height, neighborsIn, neighborsOut):
         self.id = elementId
         self.deltaPressure = 0
         self.height = height
-        self.neighbors = neighbors
+        self.neighborsIn = neighborsIn
+        self.neighborsOut = neighborsOut
+        self.neighbors = neighborsIn + neighborsOut
 
     def deltaP(self, density, flow):
         return 0
@@ -486,7 +487,7 @@ class Branch:
         characteristic = [None, None, None]
         for i in range(len(self.neighbors)):
             pipe = pipeObjects[i]
-            if pipe.pipeOut:
+            if pipe.id in self.neighborsOut:
                 directions[i] = -1
                 characteristic[i] = invariantMinus(forwPressure=pressure[i], density=density[i],
                                                    soundSpeed=soundSpeed[i],

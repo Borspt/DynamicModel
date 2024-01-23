@@ -39,7 +39,9 @@ def init_objects(test_json):
     for branch in branches:
         elementId = branch['id']
         height = branch['height']
-        element = Branch(elementId=branch['id'], height=height, neighbors=branch['position'][0].get(Neighbor, None))
+        neighborsIn = branch['position'][0].get('neighborsIn', None)
+        neighborsOut = branch['position'][0].get('neighborsOut', None)
+        element = Branch(elementId=branch['id'], height=height, neighborsIn=neighborsIn, neighborsOut=neighborsOut)
         all_objects.append(element)
         boundaryObjects[elementId] = element
         branchIdList.append(elementId)
@@ -104,10 +106,7 @@ def init_objects(test_json):
     for pipe in pipes:
         elementId = pipe['id']
         neighbors = pipe['position'][0].get(Neighbor, None)
-        if neighbors[0] in branchIdList:
-            pipeOut = True
-        else:
-            pipeOut = False
+
         profileExist = pipe.get('profile', None)
         if profileExist is None:
             lenProfile = 0
@@ -135,7 +134,7 @@ def init_objects(test_json):
         pipeId = pipe['id']
 
         element = Pipe(elementId=pipeId, innerDiameter=innerDiameter, length=length, profile=profile,
-                       start_height=start_height, end_height=end_height, neighbors=neighbors, pipeOut=pipeOut,
+                       start_height=start_height, end_height=end_height, neighbors=neighbors,
                        isTechnological=pipeTechnological)
         all_objects.append(element)
         pipe_objects[elementId] = element
