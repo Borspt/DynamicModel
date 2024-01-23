@@ -4,6 +4,7 @@ from AdditionalFunctions import *
 from matplotlib import pyplot as plt
 import time
 import os
+import keyboard
 
 JSON = "schemes/test_json(PNS_FPS_Looping2024).json"
 
@@ -194,6 +195,28 @@ for stepNumber in range(1, steps + 1):
 calcTimeEnd = time.time()
 print(f'Расчет {steps + 1} шагов произведен за {calcTimeEnd - calcTimeStart} c')
 
+
+
+showPauseTrigger = False
+def revertPause():
+    global showPauseTrigger
+    if showPauseTrigger is False:
+        showPauseTrigger = True
+        print('Pause')
+        time.sleep(1)
+    else:
+        showPauseTrigger = False
+        print('Unpause')
+        time.sleep(1)
+def increaseStep():
+    global step
+    step+=1
+
+def decreaseStep():
+    global step
+    step-=1
+
+
 if SHOW_GRAPH:
     plt.ion()
     fig = plt.figure(1)
@@ -218,8 +241,19 @@ if SHOW_GRAPH:
                 x.append(el['distance'])
                 y.append(el['height'])
         # print(f'Y = {y}')
+    step = startStep - 1
+    keyboard.add_hotkey('space', revertPause)
+    keyboard.add_hotkey('right', increaseStep)
+    keyboard.add_hotkey('left', decreaseStep)
+    while step < stepNumber:
+        # event = keyboard.read_event()
+        # keyboard.add_hotkey('space', lambda: print('space was pressed'))
+        if showPauseTrigger == False:
+            step += 1
+        else:
+            pass
 
-    for step in range(startStep, stepNumber + 1):
+
 
         timeModel = TAU * step
         dotX = np.array([])
@@ -272,14 +306,14 @@ if SHOW_GRAPH:
         plt.xticks(fontsize=20)
         end_time = time.time()
         graph_time = end_time - time_start
-        print(f'Время на отображение {graph_time} c')
+        # print(f'Время на отображение {graph_time} c')
         if (TAU / showSpeed - graph_time) > 0:
             plt.pause(TAU / showSpeed - graph_time)
         else:
             plt.pause(0.00001)
         # plt.pause(1)
 
-    plt.show()
+
     # plt.savefig('graph (3 tank + 2 fps) (20Rotor).png')
 
 #
