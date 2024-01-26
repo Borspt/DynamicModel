@@ -73,7 +73,7 @@ def getBoundaryConditions(boundaryDict, boundaryObjects, leftNeighbor, rightNeig
 
 
 class BlockValve:
-    def __init__(self, elementId, neighbors, height, status=1, fullFlow=1, kvFile=None):
+    def __init__(self, elementId, neighbors, height, resistanceCoefficient=0, status=1, fullFlow=1, kvFile=None):
         self.id = elementId
         self.fullFlow = fullFlow
         self.status = status
@@ -82,7 +82,7 @@ class BlockValve:
         self.kvFile = kvFile
         self.neighbors = neighbors
         self.height = height
-
+        self.resistanceCoefficient = resistanceCoefficient
     def deltaP(self, density, flow):
         self.deltaPressure = 0
         if self.status != 'open':
@@ -133,13 +133,12 @@ class BlockValve:
                               prevVelocity=prevVelocity, kCorrection=prevKCorrection, tau=tau,
                               prevResistance=prevPipeResistance, gravityFactor=prevG)
 
-        velocity = (Jplus - Jminus) / (2 * density * soundSpeed)
-
+        velocity = (Jplus - Jminus) / (density * soundSpeed) / (
+                1 + math.sqrt(1 + self.resistanceCoefficient / 2 * density * soundSpeed * (Jplus - Jminus)))
         boundaryLeftVelocity = velocity
         boundaryRightVelocity = velocity
-        boundaryLeftPressure = (Jplus + Jminus) / 2
 
-        boundaryRightPressure = (Jplus + Jminus) / 2
+        boundaryLeftPressure = boundaryRightPressure = (Jplus + Jminus) / 2
 
         return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
 
@@ -774,7 +773,7 @@ class TechnologicalObject:
                             pipeVelocityList.append(pipeVelocity)
                             pipePressureList.append(pipe.pressureMesh[stepNumber - 1][1])
                             try:
-                                pipeGravityFactorList.append((boundaryElement.height - pipe.heights[1]))
+                                pipeGravityFactorList.append((pipe.heights[1] - boundaryElement.height))
                             except Exception as e:
                                 print(e)
                                 pipeGravityFactorList.append(0)
@@ -785,7 +784,7 @@ class TechnologicalObject:
                             pipeVelocityList.append(pipeVelocity)
                             pipePressureList.append(pipe.pressureMesh[stepNumber - 1][-2])
                             try:
-                                pipeGravityFactorList.append((pipe.heights[-2] - boundaryElement.height))
+                                pipeGravityFactorList.append((boundaryElement.height - pipe.heights[-2]))
                             except Exception as e:
                                 print(e)
                                 pipeGravityFactorList.append(0)
@@ -818,14 +817,12 @@ class TechnologicalObject:
                     leftPipe = self.pipeObjects.get(leftNeighborId, None)
                     rightPipe = self.pipeObjects.get(rightNeighborId, None)
                     if leftNeighborId not in list(self.pipeObjects.keys()):
-                        print(leftNeighborId)
-                        print(list(self.pipeObjects.keys()))
                         leftGlobalPipe = globalPipeObjects[leftNeighborId]
                         boundaryHeight = boundaryElement.height
-                        rightHeight = rightPipe.end_height
+                        rightHeight = rightPipe.heights[1]
                         leftHeight = leftGlobalPipe.heights[-2]
-                        forwG = boundaryHeight - rightHeight
-                        prevG = leftHeight - boundaryHeight
+                        forwG = rightHeight - boundaryHeight
+                        prevG = boundaryHeight - leftHeight
                         forwVelocity = rightPipe.velocityMesh[stepNumber - 1][1]
                         Vk = leftGlobalPipe.velocityMesh[stepNumber - 1][-2]
                         Vn = leftGlobalPipe.velocityMesh[stepNumber - 1][-1]
@@ -854,9 +851,9 @@ class TechnologicalObject:
 
                         boundaryHeight = boundaryElement.height
                         rightHeight = rightGlobalPipe.heights[1]
-                        leftHeight = leftPipe.start_height
-                        forwG = boundaryHeight - rightHeight
-                        prevG = leftHeight - boundaryHeight
+                        leftHeight = leftPipe.heights[-2]
+                        forwG = rightHeight - boundaryHeight
+                        prevG = boundaryHeight - leftHeight
 
                         prevVelocity = leftPipe.velocityMesh[stepNumber - 1][-2]
                         Vk = rightGlobalPipe.velocityMesh[stepNumber - 1][1]
@@ -889,10 +886,10 @@ class TechnologicalObject:
 
                         try:
                             boundaryHeight = boundaryElement.height
-                            rightHeight = rightPipe.start_height
-                            leftHeight = leftPipe.end_height
-                            forwG = boundaryHeight - rightHeight
-                            prevG = leftHeight - boundaryHeight
+                            rightHeight = rightPipe.heights[1]
+                            leftHeight = leftPipe.heights[-2]
+                            forwG = rightHeight - boundaryHeight
+                            prevG = boundaryHeight - leftHeight
                         except Exception as e:
                             print(e)
                             forwG = 0

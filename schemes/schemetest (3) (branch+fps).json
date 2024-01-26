@@ -26,6 +26,8 @@
                             "y": 0
                         },
                         "layerId": "0",
+                        "neighborsIn" : [123,89],
+                        "neighborsOut": [129],
                         "neighborsId": [
                             123,
                             89,
