@@ -1,9 +1,10 @@
 from Elements import *
 
 
-def init_objects(test_json):
+def init_objects(test_json, tau):
     all_objects = []
-    pipe_objects = {}
+    pipeObjects = {}
+    technoObjects = {}
     boundaryObjects = {}
     branchIdList = []
 
@@ -17,6 +18,7 @@ def init_objects(test_json):
     # plugs = test_json['topology']['plugs']
     FilterStrainers = test_json['topology']['FilterStrainers']
     checkValves = test_json['topology']['checkValves']
+    technologicalObjects = test_json['assembly']['technologicalObjects']
     Neighbor = 'neighborsId'
 
     for blockValve in blockValves:
@@ -132,17 +134,41 @@ def init_objects(test_json):
             profile = None
             innerDiameter = 1.0
         pipeId = pipe['id']
-
+        if len(pipe['position']) > 1:
+            technoNeighbors = pipe['position'][2].get(Neighbor, None)
+        else:
+            technoNeighbors = None
         element = Pipe(elementId=pipeId, innerDiameter=innerDiameter, length=length, profile=profile,
                        start_height=start_height, end_height=end_height, neighbors=neighbors,
-                       isTechnological=pipeTechnological)
+                       technoNeighbors=technoNeighbors, isTechnological=pipeTechnological)
         all_objects.append(element)
-        pipe_objects[elementId] = element
+        pipeObjects[elementId] = element
 
-    return all_objects, pipe_objects, boundaryObjects, branchIdList
+    for technoObject in technologicalObjects:
+        technoId = technoObject['id']
+        height = technoObject['height']
+        boundaryTechnoObjects = {}
+        pipeTechnoObjects = {}
+        boundaryTechnoIds = technoObject['blockValvesId'] + technoObject['pumpsId'] \
+                            + technoObject['checkValvesId'] + technoObject['tanksId'] + technoObject['branchesId']
+        for elementId in boundaryTechnoIds:
+            boundaryTechnoObjects[elementId] = boundaryObjects[elementId]
+        pipeTechnoIds = technoObject['pipesId']
+        for elementId in pipeTechnoIds:
+            pipeTechnoObjects[elementId] = pipeObjects[elementId]
+
+        # miniSteps = len(pipeTechnoIds)
+        miniSteps = 100
+        element = TechnologicalObject(elementId=technoId, boundaryObjects=boundaryTechnoObjects,
+                                      pipeObjects=pipeTechnoObjects, miniSteps=miniSteps, tau=tau / miniSteps,
+                                      height=height)
+        technoObjects[technoId] = element
+        boundaryObjects[technoId] = element
+
+    return all_objects, pipeObjects, boundaryObjects, branchIdList, technoObjects, boundaryTechnoIds, pipeTechnoIds
 
 
-def calcInitValues(boundaryObjects, initialVelocity, initialPressure):
+def calcInitValues(boundaryObjects, initialVelocity, initialPressure, density):
     boundaryConditions = {}
     for element in boundaryObjects.values():
         if isinstance(element, (FlowPressureSetter, Tank)):
@@ -162,16 +188,18 @@ def calcInitValues(boundaryObjects, initialVelocity, initialPressure):
                     print(element.__dict__)
 
         elif isinstance(element, Branch):
+            heightAdjustedPressure = initialPressure - element.height * density * g
             elementConditions = {
                 'velocity': [initialVelocity, initialVelocity, initialVelocity],
-                'pressure': [initialPressure, initialPressure, initialPressure]
+                'pressure': [heightAdjustedPressure, heightAdjustedPressure, heightAdjustedPressure]
             }
         else:
+            heightAdjustedPressure = initialPressure - element.height * density * g
             elementConditions = {
                 'velocity': [initialVelocity, initialVelocity],
-                'pressure': [initialPressure, initialPressure]
+                'pressure': [heightAdjustedPressure, heightAdjustedPressure]
             }
-        print(element)
+        # print(element)
         boundaryConditions[element.id] = elementConditions
 
     return boundaryConditions
@@ -184,46 +212,4 @@ def find_object(target_id, objects):
     return None
 
 
-def getBoundaryConditions(boundaryDict, boundaryObjects, branchIdList, leftNeighbor, rightNeighbor, pipeId):
-    boundaryLeft = boundaryDict.get(leftNeighbor, None)
-    boundaryRight = boundaryDict.get(rightNeighbor, None)
 
-    assert boundaryLeft is not None, f'Pipe id{pipeId} left neighbor not in boundaryConditions'
-    assert boundaryRight is not None, f'Pipe id{pipeId} right neighbor not in boundaryConditions'
-
-    if leftNeighbor in branchIdList:
-        boundaryLeftVelocity = None
-        boundaryLeftPressure = None
-        branch = boundaryObjects[leftNeighbor]
-        for index in range(len(branch.neighbors)):
-            if pipeId == branch.neighbors[index]:
-                boundaryLeftVelocity = boundaryLeft.get('velocity', None)[index]
-                boundaryLeftPressure = boundaryLeft.get('pressure', None)[index]
-            else:
-                pass
-
-    else:
-        boundaryLeftVelocity = boundaryLeft.get('velocity', None)[1]
-        boundaryLeftPressure = boundaryLeft.get('pressure', None)[1]
-
-    assert boundaryLeftVelocity is not None, f'Pipe id{pipeId} left velocity is None, leftNeighbor id{leftNeighbor}'
-    assert boundaryLeftPressure is not None, f'Pipe id{pipeId} left pressure is None, leftNeighbor id{leftNeighbor}'
-
-    if rightNeighbor in branchIdList:
-        boundaryRightVelocity = None
-        boundaryRightPressure = None
-        branch = boundaryObjects[rightNeighbor]
-        for index in range(len(branch.neighbors)):
-            if pipeId == branch.neighbors[index]:
-                boundaryRightVelocity = boundaryRight.get('velocity', None)[index]
-                boundaryRightPressure = boundaryRight.get('pressure', None)[index]
-            else:
-                pass
-    else:
-        boundaryRightVelocity = boundaryRight.get('velocity', None)[0]
-        boundaryRightPressure = boundaryRight.get('pressure', None)[0]
-
-    assert boundaryRightVelocity is not None, f'Pipe id{pipeId} right velocity is None, rightNeighbor id{rightNeighbor}'
-    assert boundaryRightPressure is not None, f'Pipe id{pipeId} right pressure is None, rightNeighbor id{rightNeighbor}'
-
-    return boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure

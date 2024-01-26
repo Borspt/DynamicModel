@@ -4,8 +4,9 @@ from AdditionalFunctions import *
 from matplotlib import pyplot as plt
 import time
 import os
+import keyboard
 
-JSON = "schemes/schemetest (3) (blockValve).json"
+JSON = "schemes/schemetest (3) (2pump).json"
 
 with open(JSON, "r", encoding="utf-8") as load_file:
     test_json = json.load(load_file)
@@ -17,11 +18,12 @@ TAU = 1
 SOUNDSPEED = 1000
 DENSITY = 850
 INITIAL_VELOCITY = 0.01
-INITIAL_PRESSURE = g * 10000
+INITIAL_PRESSURE = 30 * g * 10000
 SHOW_GRAPH = True
+SAVE_LOGS = True
 showSpeed = 100
 USER_CHOICE = [123, 129]
-graph_ylim = 10
+graph_ylim = 3
 startStep = 0
 
 all_objects, pipeObjects, boundaryObjects, branchIdList = init_objects(test_json=test_json)
@@ -29,22 +31,22 @@ all_objects, pipeObjects, boundaryObjects, branchIdList = init_objects(test_json
 steps = math.ceil(PROCESSTIME / TAU)
 
 boundaryConditions = calcInitValues(boundaryObjects=boundaryObjects, initialVelocity=INITIAL_VELOCITY,
-                                    initialPressure=INITIAL_PRESSURE)
+                                    initialPressure=INITIAL_PRESSURE, density = DENSITY)
 
 for pipe in pipeObjects.values():
-    pipe.initMesh(soundSpeed=SOUNDSPEED, steps=steps, tau=TAU)
+    pipe.initMesh(soundSpeed=SOUNDSPEED, steps=steps, tau=1)
 
     pipe.velocityMesh[0].fill(0.01)
     for index in range(len(pipe.pressureMesh[0])):
-        pipe.pressureMesh[0][index] = INITIAL_PRESSURE + pipe.heights[index] * g * DENSITY
+        pipe.pressureMesh[0][index] = INITIAL_PRESSURE - pipe.heights[index] * g * DENSITY
 
     boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
         getBoundaryConditions(boundaryDict=boundaryConditions, boundaryObjects=boundaryObjects,
                               branchIdList=branchIdList, leftNeighbor=pipe.neighbors[0],
                               rightNeighbor=pipe.neighbors[1], pipeId=pipe.id)
 
-    # pipe.pressureMesh[0][0], pipe.pressureMesh[0][-1] = boundaryLeftPressure, boundaryRightPressure
-    # pipe.velocityMesh[0][0], pipe.velocityMesh[0][-1] = boundaryLeftVelocity, boundaryRightVelocity
+    pipe.pressureMesh[0][0], pipe.pressureMesh[0][-1] = boundaryLeftPressure, boundaryRightPressure
+    pipe.velocityMesh[0][0], pipe.velocityMesh[0][-1] = boundaryLeftVelocity, boundaryRightVelocity
 
     '''
     Заполнение
@@ -119,7 +121,7 @@ for stepNumber in range(1, steps + 1):
                     if pipe.isTechnological:
                         pipeResistance = 0
                     else:
-                        pipe.calcResistance(velocity=pipeVelocity)
+                        pipe.calcResistance(velocity=pipe.calcResistance(velocity=pipeVelocity))
                     pipeResistanceList.append(pipeResistance)
                 except Exception as e:
                     print(e)
@@ -160,9 +162,7 @@ for stepNumber in range(1, steps + 1):
                 print(e)
                 forwG = 0
                 prevG = 0
-            '''
-            Добавить PipeResistance для технологических труб
-            '''
+
             boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity = \
                 boundaryElement.calcBoundaries(tau=TAU, soundSpeed=SOUNDSPEED, density=DENSITY,
                                                forwG=forwG,
@@ -196,6 +196,37 @@ for stepNumber in range(1, steps + 1):
 calcTimeEnd = time.time()
 print(f'Расчет {steps + 1} шагов произведен за {calcTimeEnd - calcTimeStart} c')
 
+
+
+showPauseTrigger = False
+def revertPause():
+    global showPauseTrigger
+    if showPauseTrigger is False:
+        showPauseTrigger = True
+        print('Pause')
+        time.sleep(1)
+    else:
+        showPauseTrigger = False
+        print('Unpause')
+        time.sleep(1)
+def increaseStep():
+    global step
+    step+=1
+
+def decreaseStep():
+    global step
+    step-=1
+
+
+if SAVE_LOGS:
+    for elementId in USER_CHOICE:
+        pipe = pipeObjects[elementId]
+        velocity = pipe.velocityMesh
+        np.savetxt(f"Logs/Pipe{elementId}.csv", velocity, delimiter=",")
+        print(f'Логи по трубе {elementId} сохранены')
+
+
+
 if SHOW_GRAPH:
     plt.ion()
     fig = plt.figure(1)
@@ -220,8 +251,19 @@ if SHOW_GRAPH:
                 x.append(el['distance'])
                 y.append(el['height'])
         # print(f'Y = {y}')
+    step = startStep - 1
+    keyboard.add_hotkey('space', revertPause)
+    keyboard.add_hotkey('right', increaseStep)
+    keyboard.add_hotkey('left', decreaseStep)
+    while step < stepNumber:
+        # event = keyboard.read_event()
+        # keyboard.add_hotkey('space', lambda: print('space was pressed'))
+        if showPauseTrigger == False:
+            step += 1
+        else:
+            pass
 
-    for step in range(startStep, stepNumber + 1):
+
 
         timeModel = TAU * step
         dotX = np.array([])
@@ -279,8 +321,9 @@ if SHOW_GRAPH:
             plt.pause(TAU / showSpeed - graph_time)
         else:
             plt.pause(0.00001)
+        # plt.pause(1)
 
-    plt.show()
+
     # plt.savefig('graph (3 tank + 2 fps) (20Rotor).png')
 
 #

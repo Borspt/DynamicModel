@@ -144,7 +144,7 @@
             {
                 "id": 4,
                 "coordinates": {
-                    "x": 550,
+                    "x": 300,
                     "y": 0
                 },
                 "neighborPipesId": [
@@ -163,7 +163,7 @@
                             2000
                         ],
                         "coordinates": {
-                            "x": 550,
+                            "x": 300,
                             "y": 0
                         }
                     }
@@ -1370,10 +1370,30 @@
                     "y": []
                 },
                 "position": [
-                    {
+                     {
                         "neighborsId": [
                             4,
                             1951
+                        ],
+                        "turnCoordinates": {
+                            "x": [],
+                            "y": []
+                        }
+                    },
+                     {
+                        "neighborsId": [
+                            4,
+                            1951
+                        ],
+                        "turnCoordinates": {
+                            "x": [],
+                            "y": []
+                        }
+                    },
+                     {
+                        "neighborsId": [
+                            5501230,
+                            "Null"
                         ],
                         "turnCoordinates": {
                             "x": [],
@@ -2459,5 +2479,18 @@
                 ]
             }
         ]
+    },
+    "assembly": {
+        "technologicalObjects":[{
+            "id": 5501230,
+            "height": 120,
+            "pipesId": [0, 101, 102, 103, 104, 105, 23,51, 52, 53, 54, 55, 56, 44, 57, 58, 29],
+            "blockValvesId": [1,4],
+            "pumpsId": [5101, 5102, 5103, 5104],
+            "branchesId": [3005,3006,3031,3032,3033,3034],
+            "tanksId": [9999],
+            "checkValvesId": [10, 11]
+
+        }]
     }
 }
