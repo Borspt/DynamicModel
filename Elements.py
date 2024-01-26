@@ -424,10 +424,14 @@ class CheckValve:
         if velocity >= 0:
             boundaryLeftVelocity = velocity
             boundaryRightVelocity = velocity
+            boundaryLeftPressure = boundaryRightPressure = (Jplus + Jminus) / 2
         else:
             boundaryLeftVelocity = 0
-            boundaryRightVelocity = velocity
-        boundaryLeftPressure = boundaryRightPressure = (Jplus + Jminus) / 2
+            boundaryRightVelocity = 0
+            boundaryLeftPressure = Jplus
+            boundaryRightPressure = Jminus
+
+
 
         return boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity
 
