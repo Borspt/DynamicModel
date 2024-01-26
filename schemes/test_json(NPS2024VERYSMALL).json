@@ -1,0 +1,166 @@
+{
+    "topology": {
+        "blockValves": [],
+        "checkValves": [],
+        "branches":  [
+        ],
+        "pumps": [
+        ],
+        "pipes": [
+
+            {
+                "id": 2000,
+                "turnCoordinates": {
+                    "x": [],
+                    "y": []
+                },
+                "position": [
+                    {
+                        "neighborsId": [
+                            9999,
+                            10000
+                        ],
+                        "turnCoordinates": {
+                            "x": [],
+                            "y": []
+                        }
+                    }
+                ],
+                "profile": [
+                    {
+                        "distance": 52.5,
+                        "height": 120.0,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 57.75,
+                        "height": 139.8507488887937,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 63.0,
+                        "height": 119.83646650319866,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 68.25,
+                        "height": 118.19014445834536,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 73.5,
+                        "height": 114.02508049932419,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 78.75,
+                        "height": 139.23492713777952,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 84.0,
+                        "height": 128.35217567177742,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 89.25,
+                        "height": 143.45116299470214,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 94.5,
+                        "height": 142.80397082447743,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 99.75,
+                        "height": 146.81133029050525,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    },
+                    {
+                        "distance": 105.0,
+                        "height": 150.0,
+                        "innerDiameter": 1,
+                        "roughness": 0.0002,
+                        "maxPressure": 2000000
+                    }
+                ]
+            }
+
+        ],
+        "tanks": [
+            {
+                "id": 9999,
+                "coordinates": {
+                    "x": -225,
+                    "y": 0
+                },
+                "distance": 0,
+                "inHeight" : 100,
+                "height": 120,
+                "density": 850,
+                "neighborPipesId": [-1,
+                    0
+                ],
+                "position": [
+                    {
+                        "neighborsId": [-1,
+                            2000
+                        ],
+                        "coordinates": {
+                            "x": -225,
+                            "y": 0
+                        }
+                    }
+                ]
+            },
+            {
+                "id": 10000,
+                "coordinates": {
+                    "x": 1100,
+                    "y": 0
+                },
+                "inHeight" : 50,
+                "height": 150,
+                "distance": 315,
+                "density": 850,
+                "neighborPipesId": [
+                    4000, -1
+                ],
+                "position": [
+                    {
+                        "neighborsId": [
+                            2000, -1
+                        ],
+                        "coordinates": {
+                            "x": 1100,
+                            "y": 0
+                        }
+                    }
+                ]
+            }
+        ],
+        "FilterStrainers": [],
+        "flowPressureSetters": []
+    }
+}

@@ -15,150 +15,85 @@
             {
                 "flowAvailiable": true,
                 "id": 123,
-                "profile": [{"distance": 34.76588,
-                "height": 321.95,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 38.255574,
-                "height": 321.21,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 38.441409,
-                "height": 319.66,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 38.614423,
-                "height": 318.69,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 38.808862,
-                "height": 319.84,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 38.950748,
-                "height": 320.2,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 39.109672,
-                "height": 319.36,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 39.369438,
-                "height": 318.04,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 39.63293,
-                "height": 316.46,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 39.903677,
-                "height": 316.27,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 40.254574,
-                "height": 314.08,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 40.394958,
-                "height": 319.7,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 40.636608,
-                "height": 327.09,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 40.905597,
-                "height": 318.39,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 41.166092,
-                "height": 316.4,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 41.44849,
-                "height": 318.04,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 41.699867,
-                "height": 318.3,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 41.971282,
-                "height": 325.27,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 42.254544,
-                "height": 332.84,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 42.471189,
-                "height": 331.85,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 42.754966,
-                "height": 329.33,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 43.031238,
-                "height": 329.42,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 43.22843,
-                "height": 327.88,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000},
-               {"distance": 43.512247,
-                "height": 326.75,
-                "innerDiameter": 1,
-
-                "roughness": 0.0002,
-                "maxPressure": 2000000}],
+                "profile":[
+    {
+        "distance": 0.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 10.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 20.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 30.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 40.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 50.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 60.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 70.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 80.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 90.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 100.0,
+        "height": 200.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    }
+],
                 "position": [
                     {
                         "layerId": "0",
@@ -191,14 +126,15 @@
 
         ],
         "pumpStations": [],
+        "checkValves": [],
         "tankParks": [],
         "filterBlocks": [],
         "tanks": [
 
             {
                 "id": 371,
-                "inHeight" : 150,
-                "height": 321.95,
+                "inHeight" : 200,
+                "height": 200,
                 "position": [
                     {
                         "coordinates": {
@@ -229,7 +165,7 @@
             {
                 "distance": 490,
                 "inHeight" : 100,
-                "height": 326.75,
+                "height": 200,
                 "id": 10000,
                 "density": 850,
                 "position": [

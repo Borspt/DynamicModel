@@ -12,7 +12,8 @@
                             }}
         ],
         "blockValves": [],
-        "checkValves": [{
+        "checkValves": [],
+        "branches":  [{
                 "id": 66,
                 "height": 326.75,
                 "status": {
@@ -27,6 +28,7 @@
                         "layerId": "0",
                         "neighborsId": [
                             123,
+                            89,
                             129
                         ]
                     },
@@ -44,8 +46,39 @@
                     }
                 ]
             }],
-        "branches":  [],
-        "flowPressureSetters":[],
+        "flowPressureSetters": [
+            {
+                "distance": 0,
+                "id": 75,
+                "inHeight" : 200,
+                "height": 300,
+                "position": [
+                    {
+                        "coordinates": {
+                            "x": 510,
+                            "y": 50
+                        },
+                        "layerId": "0",
+                        "neighborsId": [
+                            -1,
+                            89
+                        ]
+                    },
+                    {
+                        "coordinates": {
+                            "x": 410,
+                            "y": 50
+                        },
+                        "layerId": "1",
+                        "neighborsId": [
+                            -1,
+                            89
+                        ]
+                    }
+                ],
+                "density": 850
+            }
+        ],
         "pipes": [
 
             {
@@ -156,14 +189,118 @@
                 ]
             },
 
-
+            {
+                "flowAvailiable": true,
+                "id": 89,
+                "profile": [
+    {
+        "distance": 0.0,
+        "height": 300.0,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 3.0,
+        "height": 296.69656255915226,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 6.0,
+        "height": 316.52427970893217,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 9.0,
+        "height": 295.9979612789981,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 12.0,
+        "height": 311.5096066157357,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 15.0,
+        "height": 316.705524836677,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 18.0,
+        "height": 341.51562042375417,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 21.0,
+        "height": 325.1081845357751,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 24.0,
+        "height": 329.1664825497094,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 27.0,
+        "height": 326.91265453737935,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    },
+    {
+        "distance": 30.0,
+        "height": 326.75,
+        "innerDiameter": 1,
+        "roughness": 0.0002,
+        "maxPressure": 2000000
+    }
+],
+                "position": [
+                    {
+                        "layerId": "0",
+                        "neighborsId": [
+                            75,
+                            66
+                        ],
+                        "turnCoordinates": {
+                            "x": [],
+                            "y": []
+                        }
+                    },
+                    {
+                        "layerId": "1",
+                        "neighborsId": [
+                            75,
+                            101
+                        ],
+                        "turnCoordinates": {
+                            "x": [],
+                            "y": []
+                        }
+                    }
+                ]
+            },
 
             {
                 "flowAvailiable": true,
                 "id": 129,
-                "pipeOut": true,
-                "profile": [
-                  {"distance": 30.0,
+                "profile": [{"distance": 30.0,
                 "height": 326.75,
                 "innerDiameter": 1,
 
@@ -410,25 +547,25 @@
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 70.201973,
-                "height": 201.11,
+                "height": 207.35,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 70.318552,
-                "height": 201.11,
+                "height": 204.57,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 70.521544,
-                "height": 201.11,
+                "height": 205.45,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
                 "maxPressure": 2000000},
                {"distance": 70.656378,
-                "height": 201.11,
+                "height": 202.64,
                 "innerDiameter": 1,
 
                 "roughness": 0.0002,
@@ -473,7 +610,7 @@
 
             {
                 "id": 371,
-                "inHeight" : 350,
+                "inHeight" : 200,
                 "height": 300,
                 "position": [
                     {
@@ -503,7 +640,7 @@
             },
             
             {
-                "distance": 490,
+
                 "inHeight" : 200,
                 "height": 201.11,
                 "id": 10000,

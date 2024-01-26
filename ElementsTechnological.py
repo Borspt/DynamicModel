@@ -19,51 +19,6 @@ def invariantPlus(prevPressure, density, soundSpeed, prevVelocity, kCorrection, 
     return invariant
 
 
-def getBoundaryConditions(boundaryDict, boundaryObjects, leftNeighbor, rightNeighbor, pipeId):
-    boundaryLeft = boundaryDict.get(leftNeighbor, None)
-    boundaryRight = boundaryDict.get(rightNeighbor, None)
-
-    assert boundaryLeft is not None, f'Pipe id{pipeId} left neighbor not in boundaryConditions'
-    assert boundaryRight is not None, f'Pipe id{pipeId} right neighbor not in boundaryConditions'
-
-    if isinstance(boundaryObjects[leftNeighbor], Branch):
-        boundaryLeftVelocity = None
-        boundaryLeftPressure = None
-        branch = boundaryObjects[leftNeighbor]
-        for index in range(len(branch.neighbors)):
-            if pipeId == branch.neighbors[index]:
-                boundaryLeftVelocity = boundaryLeft.get('velocity', None)[index]
-                boundaryLeftPressure = boundaryLeft.get('pressure', None)[index]
-            else:
-                pass
-
-    else:
-        boundaryLeftVelocity = boundaryLeft.get('velocity', None)[1]
-        boundaryLeftPressure = boundaryLeft.get('pressure', None)[1]
-
-    assert boundaryLeftVelocity is not None, f'Pipe id{pipeId} left velocity is None, leftNeighbor id{leftNeighbor}'
-    assert boundaryLeftPressure is not None, f'Pipe id{pipeId} left pressure is None, leftNeighbor id{leftNeighbor}'
-
-    if isinstance(boundaryObjects[rightNeighbor], Branch):
-        boundaryRightVelocity = None
-        boundaryRightPressure = None
-        branch = boundaryObjects[rightNeighbor]
-        for index in range(len(branch.neighbors)):
-            if pipeId == branch.neighbors[index]:
-                boundaryRightVelocity = boundaryRight.get('velocity', None)[index]
-                boundaryRightPressure = boundaryRight.get('pressure', None)[index]
-            else:
-                pass
-    else:
-        boundaryRightVelocity = boundaryRight.get('velocity', None)[0]
-        boundaryRightPressure = boundaryRight.get('pressure', None)[0]
-
-    assert boundaryRightVelocity is not None, f'Pipe id{pipeId} right velocity is None, rightNeighbor id{rightNeighbor}'
-    assert boundaryRightPressure is not None, f'Pipe id{pipeId} right pressure is None, rightNeighbor id{rightNeighbor}'
-
-    return boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure
-
-
 # J_minus = forwPressure - density * soundSpeed * forwVelocity +\
 #                        density * g * forwG +\
 #                       soundSpeed * tau * self.kCorrection * (density *forwB)
@@ -163,10 +118,13 @@ class FilterStrainer:
 
 
 class Pipe:
-    def __init__(self, elementId, innerDiameter, length, profile, start_height, end_height, neighbors, technoNeighbors,
+    def __init__(self, elementId, innerDiameter, length, profile, start_height, end_height, neighbors,
                  isTechnological, technologicalResistance=0, roughness=0.0002, losses='auto', viscosity=1e-3):
 
+        self.pressureMesh = None
         self.velocityMesh = None
+        self.pressureMiniMesh = None
+        self.velocityMiniMesh = None
         self.id = elementId
         self.innerDiameter = innerDiameter
         self.length = length * 1000
@@ -180,7 +138,6 @@ class Pipe:
         self.neighbors = neighbors
         self.isTechnological = isTechnological
         self.technologicalResistance = technologicalResistance
-        self.technoNeighbors = technoNeighbors
 
     def calcLambda(self, flow, useFlow=True):
         if useFlow:
@@ -246,7 +203,7 @@ class Pipe:
         self.deltaPressure = deltaP
         return deltaP
 
-    def __calcMeshX__(self, soundSpeed, tau):
+    def __calcMeshX(self, soundSpeed, tau):
         if self.length > 0.5 * soundSpeed * tau:
             self.meshCountX = math.floor(self.length / soundSpeed / tau) + 1
         else:
@@ -275,11 +232,11 @@ class Pipe:
             i += 1
         return None
 
-    def initMesh(self, soundSpeed, steps, tau):
+    def initMesh(self, soundSpeed, steps, tau, miniStepRatio=100):
         '''
         Определение координат X для расчета
         '''
-        self.__calcMeshX__(soundSpeed, tau=tau)
+        self.__calcMeshX(soundSpeed, tau=tau)
         '''
         Расчет высот соответствующих координате X
         '''
@@ -289,6 +246,13 @@ class Pipe:
             heights.append(self.start_height)
             heights.append(self.end_height)
             self.heights = heights
+            '''
+                           Инициализация более подробной сетки для технологических труб
+                    '''
+
+            self.velocityMiniMesh = np.zeros((miniStepRatio, miniStepRatio))
+            self.pressureMiniMesh = np.zeros((miniStepRatio, miniStepRatio))
+
         else:
             heights.append(self.profile[0]['height'])
             for xPoint in self.meshX[1:-1]:
@@ -339,6 +303,33 @@ class Pipe:
         self.velocityMesh[stepNumber][-1] = boundaryRightVelocity
         self.pressureMesh[stepNumber][0] = boundaryLeftPressure
         self.pressureMesh[stepNumber][-1] = boundaryRightPressure
+        if self.isTechnological:
+            self.velocityMiniMesh[0][0] = boundaryLeftVelocity
+            self.velocityMiniMesh[0][-1] = boundaryRightVelocity
+            self.pressureMiniMesh[0][0] = boundaryLeftPressure
+            self.pressureMiniMesh[0][-1] = boundaryRightPressure
+            for miniStep in range(1, self.pressureMiniMesh.shape[0]):
+                self.velocityMiniMesh[miniStep][0] = boundaryLeftVelocity
+                self.velocityMiniMesh[miniStep][-1] = boundaryRightVelocity
+                self.pressureMiniMesh[miniStep][0] = boundaryLeftPressure
+                self.pressureMiniMesh[miniStep][-1] = boundaryRightPressure
+                for i in range(1, self.pressureMiniMesh.shape[1] - 1):
+                    prevPressure = self.pressureMiniMesh[miniStep - 1][i - 1]
+                    forwPressure = self.pressureMiniMesh[miniStep - 1][i + 1]
+                    prevVelocity = self.velocityMiniMesh[miniStep - 1][i - 1]
+                    forwVelocity = self.velocityMiniMesh[miniStep - 1][i + 1]
+
+                    Jminus = forwPressure - density * soundSpeed * forwVelocity
+
+                    Jplus = prevPressure + density * soundSpeed * prevVelocity
+
+                    self.pressureMiniMesh[miniStep][i] = (Jplus + Jminus) / 2
+                    self.velocityMiniMesh[miniStep][i] = (Jplus - Jminus) / (2 * density * soundSpeed)
+
+            self.pressureMesh[stepNumber][0] = self.pressureMiniMesh[-1][1]
+            self.velocityMesh[stepNumber][0] = self.velocityMiniMesh[-1][1]
+            self.pressureMesh[stepNumber][1] = self.pressureMiniMesh[-1][-2]
+            self.velocityMesh[stepNumber][1] = self.velocityMiniMesh[-1][-2]
 
         for i in range(1, self.pressureMesh.shape[1] - 1):
             prevPressure = self.pressureMesh[stepNumber - 1][i - 1]
@@ -707,234 +698,3 @@ class Regulator:
     def setLims(self, min, max):
         self.saturation_max = max
         self.saturation_min = min
-
-
-def interPolateVelocity(Vn, Vk, miniSteps, miniStep):
-    return Vk + (Vn - Vk) * (miniSteps - miniStep) / miniSteps
-
-
-def interPolatePressure(Pn, Pk, miniSteps, miniStep):
-    return Pk + (Pn - Pk) * (miniSteps - miniStep) / miniSteps
-
-
-class TechnologicalObject:
-    def __init__(self, elementId, boundaryObjects, pipeObjects, miniSteps, tau, height, boundaryConditions={}):
-        self.id = elementId
-        self.boundaryObjects = boundaryObjects
-        self.pipeObjects = pipeObjects
-        self.miniSteps = miniSteps
-        self.tau = tau
-        self.boundaryConditions = boundaryConditions
-        self.height = height
-
-    def calcBoundaries(self, soundSpeed, density, stepNumber, globalPipeObjects):
-        boundaryLeftP = None
-        boundaryLeftV = None
-        boundaryRightP = None
-        boundaryRightV = None
-
-        for miniStep in range(1, self.miniSteps + 1):
-            for boundaryElement in self.boundaryObjects.values():
-                if isinstance(boundaryElement, (FlowPressureSetter, Tank)):
-                    if boundaryElement.start:
-                        neighborId = boundaryElement.neighbors[1]
-                        neighborPoint = 1
-                    else:
-                        neighborId = boundaryElement.neighbors[0]
-                        neighborPoint = -2
-
-                    pipe = self.pipeObjects[neighborId]
-
-                    boundaryLeftPressure, boundaryRightPressure, \
-                        boundaryLeftVelocity, boundaryRightVelocity = \
-                        boundaryElement.calcBoundaries(tau=self.tau, soundSpeed=soundSpeed,
-                                                       pipeHeight=pipe.heights[neighborPoint],
-                                                       pipeVelocity=pipe.velocityMesh[stepNumber - 1][neighborPoint],
-                                                       pipePressure=pipe.pressureMesh[stepNumber - 1][neighborPoint],
-                                                       pipeResistance=0,
-                                                       pipeKCorrection=0)
-                    conditions = {
-                        'pressure': [boundaryLeftPressure, boundaryRightPressure],
-                        'velocity': [boundaryLeftVelocity, boundaryRightVelocity]
-                    }
-                elif isinstance(boundaryElement, Branch):
-                    pipeNeighbors = []
-                    pipeVelocityList = []
-                    pipePressureList = []
-                    pipeDiametersList = []
-                    pipeResistanceList = []
-                    pipeKCorrectionList = []
-                    pipeGravityFactorList = []
-
-                    for pipeId in boundaryElement.neighbors:
-                        pipe = self.pipeObjects[pipeId]
-                        pipeNeighbors.append(pipe)
-                        if pipeId in boundaryElement.neighborsOut:
-                            pipeVelocity = pipe.velocityMesh[stepNumber - 1][1]
-                            pipeVelocityList.append(pipeVelocity)
-                            pipePressureList.append(pipe.pressureMesh[stepNumber - 1][1])
-                            try:
-                                pipeGravityFactorList.append((boundaryElement.height - pipe.heights[1]))
-                            except Exception as e:
-                                print(e)
-                                pipeGravityFactorList.append(0)
-
-
-                        else:
-                            pipeVelocity = pipe.velocityMesh[stepNumber - 1][-2]
-                            pipeVelocityList.append(pipeVelocity)
-                            pipePressureList.append(pipe.pressureMesh[stepNumber - 1][-2])
-                            try:
-                                pipeGravityFactorList.append((pipe.heights[-2] - boundaryElement.height))
-                            except Exception as e:
-                                print(e)
-                                pipeGravityFactorList.append(0)
-                        try:
-                            if pipe.isTechnological:
-                                pipeResistance = 0
-                            else:
-                                pipe.calcResistance(velocity=pipe.calcResistance(velocity=pipeVelocity))
-                            pipeResistanceList.append(pipeResistance)
-                        except Exception as e:
-                            print(e)
-                        pipeDiametersList.append(pipe.innerDiameter)
-                        pipeKCorrectionList.append(pipe.kCorrection)
-                    densityList = [density, density, density]
-                    soundSpeedList = [soundSpeed, soundSpeed, soundSpeed]
-                    boundaryPressure, boundaryVelocity = \
-                        boundaryElement.calcBoundaries(tau=self.tau, soundSpeed=soundSpeedList, density=densityList,
-                                                       gravityFactor=pipeGravityFactorList, velocity=pipeVelocityList,
-                                                       pressure=pipePressureList, diameter=pipeDiametersList,
-                                                       resistance=pipeResistanceList, kCorrection=pipeKCorrectionList,
-                                                       pipeObjects=pipeNeighbors)
-                    conditions = {
-                        'pressure': boundaryPressure,
-                        'velocity': boundaryVelocity
-                    }
-                else:
-
-                    leftNeighborId = boundaryElement.neighbors[0]
-                    rightNeighborId = boundaryElement.neighbors[1]
-                    leftPipe = self.pipeObjects.get(leftNeighborId, None)
-                    rightPipe = self.pipeObjects.get(rightNeighborId, None)
-                    if leftNeighborId not in list(self.pipeObjects.keys()):
-                        print(leftNeighborId)
-                        print(list(self.pipeObjects.keys()))
-                        leftGlobalPipe = globalPipeObjects[leftNeighborId]
-                        boundaryHeight = boundaryElement.height
-                        rightHeight = rightPipe.end_height
-                        leftHeight = leftGlobalPipe.heights[-2]
-                        forwG = boundaryHeight - rightHeight
-                        prevG = leftHeight - boundaryHeight
-                        forwVelocity = rightPipe.velocityMesh[stepNumber - 1][1]
-                        Vk = leftGlobalPipe.velocityMesh[stepNumber - 1][-2]
-                        Vn = leftGlobalPipe.velocityMesh[stepNumber - 1][-1]
-                        prevVelocity = interPolateVelocity(Vn=Vn, Vk=Vk, miniSteps=self.miniSteps,
-                                                           miniStep=miniStep)
-                        forwPressure = rightPipe.pressureMesh[stepNumber - 1][1]
-                        Pk = leftGlobalPipe.pressureMesh[stepNumber - 1][-2]
-                        Pn = leftGlobalPipe.pressureMesh[stepNumber - 1][-1]
-                        prevPressure = interPolatePressure(Pk=Pk, Pn=Pn, miniSteps=self.miniSteps,
-                                                           miniStep=miniStep)
-                        forwDiameter = rightPipe.innerDiameter
-                        prevDiameter = leftGlobalPipe.innerDiameter
-
-                        forwPipeResistance = rightPipe.calcResistance(velocity=forwVelocity)
-                        prevPipeResistance = leftGlobalPipe.calcResistance(velocity=prevVelocity)
-
-                        forwKCorrection = rightPipe.kCorrection
-                        prevKCorrection = leftGlobalPipe.kCorrection
-
-
-
-
-
-                    elif rightNeighborId not in list(self.pipeObjects.keys()):
-                        rightGlobalPipe = globalPipeObjects[rightNeighborId]
-
-                        boundaryHeight = boundaryElement.height
-                        rightHeight = rightGlobalPipe.heights[1]
-                        leftHeight = leftPipe.start_height
-                        forwG = boundaryHeight - rightHeight
-                        prevG = leftHeight - boundaryHeight
-
-                        prevVelocity = leftPipe.velocityMesh[stepNumber - 1][-2]
-                        Vk = rightGlobalPipe.velocityMesh[stepNumber - 1][1]
-                        Vn = rightGlobalPipe.velocityMesh[stepNumber - 1][0]
-                        forwVelocity = interPolateVelocity(Vn=Vn, Vk=Vk, miniSteps=self.miniSteps,
-                                                           miniStep=miniStep)
-                        prevPressure = leftPipe.pressureMesh[stepNumber - 1][1]
-                        Pk = rightGlobalPipe.pressureMesh[stepNumber - 1][1]
-                        Pn = rightGlobalPipe.pressureMesh[stepNumber - 1][0]
-                        forwPressure = interPolatePressure(Pk=Pk, Pn=Pn, miniSteps=self.miniSteps,
-                                                           miniStep=miniStep)
-                        forwDiameter = rightGlobalPipe.innerDiameter
-                        prevDiameter = leftPipe.innerDiameter
-                        forwPipeResistance = rightGlobalPipe.calcResistance(velocity=forwVelocity)
-                        prevPipeResistance = leftPipe.calcResistance(velocity=prevVelocity)
-
-                        forwKCorrection = rightGlobalPipe.kCorrection
-                        prevKCorrection = leftPipe.kCorrection
-                    else:
-                        forwVelocity = rightPipe.velocityMesh[stepNumber - 1][1]
-                        prevVelocity = leftPipe.velocityMesh[stepNumber - 1][-2]
-                        forwPressure = rightPipe.pressureMesh[stepNumber - 1][1]
-                        prevPressure = leftPipe.pressureMesh[stepNumber - 1][-2]
-                        forwDiameter = rightPipe.innerDiameter
-                        prevDiameter = leftPipe.innerDiameter
-                        forwPipeResistance = rightPipe.calcResistance(velocity=forwVelocity)
-                        prevPipeResistance = leftPipe.calcResistance(velocity=prevVelocity)
-                        forwKCorrection = rightPipe.kCorrection
-                        prevKCorrection = leftPipe.kCorrection
-
-                        try:
-                            boundaryHeight = boundaryElement.height
-                            rightHeight = rightPipe.start_height
-                            leftHeight = leftPipe.end_height
-                            forwG = boundaryHeight - rightHeight
-                            prevG = leftHeight - boundaryHeight
-                        except Exception as e:
-                            print(e)
-                            forwG = 0
-                            prevG = 0
-
-                    boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity = \
-                        boundaryElement.calcBoundaries(tau=self.tau, soundSpeed=soundSpeed, density=density,
-                                                       forwG=forwG,
-                                                       prevG=prevG,
-                                                       forwVelocity=forwVelocity, prevVelocity=prevVelocity,
-                                                       forwPressure=forwPressure, prevPressure=prevPressure,
-                                                       forwPipeResistance=forwPipeResistance,
-                                                       prevPipeResistance=prevPipeResistance,
-                                                       forwKCorrection=forwKCorrection,
-                                                       prevKCorrection=prevKCorrection, prevDiameter=prevDiameter,
-                                                       forwDiameter=forwDiameter)
-
-                    conditions = {
-                        'pressure': [boundaryLeftPressure, boundaryRightPressure],
-                        'velocity': [boundaryLeftVelocity, boundaryRightVelocity]
-                    }
-
-                self.boundaryConditions[boundaryElement.id] = conditions
-                if miniStep == self.miniSteps:
-                    if leftPipe not in self.pipeObjects.values():
-                        boundaryLeftP = boundaryLeftPressure
-                        boundaryLeftV = boundaryLeftVelocity
-                    if rightPipe not in self.pipeObjects.values():
-                        boundaryRightP = boundaryRightPressure
-                        boundaryRightV = boundaryRightVelocity
-
-            for pipe in self.pipeObjects.values():
-                leftNeighbor = pipe.neighbors[0]
-                rightNeighbor = pipe.neighbors[1]
-                boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
-                    getBoundaryConditions(leftNeighbor=leftNeighbor, rightNeighbor=rightNeighbor,
-                                          pipeId=pipe.id, boundaryObjects=self.boundaryObjects,
-                                          boundaryDict=self.boundaryConditions)
-                pipe.calcStep(soundSpeed=soundSpeed, density=density, boundaryLeftVelocity=boundaryLeftVelocity,
-                              boundaryRightVelocity=boundaryRightVelocity, boundaryLeftPressure=boundaryLeftPressure,
-                              boundaryRightPressure=boundaryRightPressure, stepNumber=stepNumber, tau=self.tau)
-                if miniStep != self.miniSteps:
-                    pipe.pressureMesh[stepNumber - 1] = pipe.pressureMesh[stepNumber]
-                    pipe.velocityMesh[stepNumber - 1] = pipe.velocityMesh[stepNumber]
-        return boundaryLeftP, boundaryRightP, boundaryLeftV, boundaryRightV
