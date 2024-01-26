@@ -18,7 +18,12 @@ def init_objects(test_json, tau):
     # plugs = test_json['topology']['plugs']
     FilterStrainers = test_json['topology']['FilterStrainers']
     checkValves = test_json['topology']['checkValves']
-    technologicalObjects = test_json['assembly']['technologicalObjects']
+    if 'assembly' in test_json.keys():
+        technologicalObjects = test_json['assembly']['technologicalObjects']
+    else:
+        technologicalObjects = None
+        boundaryTechnoIds = []
+        pipeTechnoIds = []
     Neighbor = 'neighborsId'
 
     for blockValve in blockValves:
@@ -134,7 +139,7 @@ def init_objects(test_json, tau):
             profile = None
             innerDiameter = 1.0
         pipeId = pipe['id']
-        if len(pipe['position']) > 1:
+        if len(pipe['position']) > 2:
             technoNeighbors = pipe['position'][2].get(Neighbor, None)
         else:
             technoNeighbors = None
@@ -143,27 +148,27 @@ def init_objects(test_json, tau):
                        technoNeighbors=technoNeighbors, isTechnological=pipeTechnological)
         all_objects.append(element)
         pipeObjects[elementId] = element
-
-    for technoObject in technologicalObjects:
-        technoId = technoObject['id']
-        height = technoObject['height']
-        boundaryTechnoObjects = {}
-        pipeTechnoObjects = {}
-        boundaryTechnoIds = technoObject['blockValvesId'] + technoObject['pumpsId'] \
-                            + technoObject['checkValvesId'] + technoObject['tanksId'] + technoObject['branchesId']
-        for elementId in boundaryTechnoIds:
-            boundaryTechnoObjects[elementId] = boundaryObjects[elementId]
-        pipeTechnoIds = technoObject['pipesId']
-        for elementId in pipeTechnoIds:
-            pipeTechnoObjects[elementId] = pipeObjects[elementId]
+    if technologicalObjects is not None:
+        for technoObject in technologicalObjects:
+            technoId = technoObject['id']
+            height = technoObject['height']
+            boundaryTechnoObjects = {}
+            pipeTechnoObjects = {}
+            boundaryTechnoIds = technoObject['blockValvesId'] + technoObject['pumpsId'] \
+                                + technoObject['checkValvesId'] + technoObject['tanksId'] + technoObject['branchesId']
+            for elementId in boundaryTechnoIds:
+                boundaryTechnoObjects[elementId] = boundaryObjects[elementId]
+            pipeTechnoIds = technoObject['pipesId']
+            for elementId in pipeTechnoIds:
+                pipeTechnoObjects[elementId] = pipeObjects[elementId]
 
         # miniSteps = len(pipeTechnoIds)
-        miniSteps = 100
-        element = TechnologicalObject(elementId=technoId, boundaryObjects=boundaryTechnoObjects,
-                                      pipeObjects=pipeTechnoObjects, miniSteps=miniSteps, tau=tau / miniSteps,
-                                      height=height)
-        technoObjects[technoId] = element
-        boundaryObjects[technoId] = element
+            miniSteps = 100
+            element = TechnologicalObject(elementId=technoId, boundaryObjects=boundaryTechnoObjects,
+                                          pipeObjects=pipeTechnoObjects, miniSteps=miniSteps, tau=tau / miniSteps,
+                                          height=height)
+            technoObjects[technoId] = element
+            boundaryObjects[technoId] = element
 
     return all_objects, pipeObjects, boundaryObjects, branchIdList, technoObjects, boundaryTechnoIds, pipeTechnoIds
 

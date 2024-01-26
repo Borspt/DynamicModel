@@ -27,6 +27,7 @@ graph_ylim = 10
 startStep = 0
 miniStepRatio = 10
 
+
 all_objects, pipeObjects, boundaryObjects, branchIdList, technoObjects, boundaryTechnoIds, pipeTechnoIds = \
     init_objects(test_json=test_json, tau=TAU)
 
@@ -106,7 +107,7 @@ for stepNumber in range(1, steps + 1):
                     pipeVelocityList.append(pipeVelocity)
                     pipePressureList.append(pipe.pressureMesh[stepNumber - 1][1])
                     try:
-                        pipeGravityFactorList.append((boundaryElement.height - pipe.heights[1]))
+                        pipeGravityFactorList.append((pipe.heights[1] - boundaryElement.height))
                     except Exception as e:
                         print(e)
                         pipeGravityFactorList.append(0)
@@ -117,7 +118,7 @@ for stepNumber in range(1, steps + 1):
                     pipeVelocityList.append(pipeVelocity)
                     pipePressureList.append(pipe.pressureMesh[stepNumber - 1][-2])
                     try:
-                        pipeGravityFactorList.append((pipe.heights[-2] - boundaryElement.height))
+                        pipeGravityFactorList.append((boundaryElement.height - pipe.heights[-2]))
                     except Exception as e:
                         print(e)
                         pipeGravityFactorList.append(0)
@@ -167,10 +168,10 @@ for stepNumber in range(1, steps + 1):
             prevDiameter = leftPipe.innerDiameter
             try:
                 boundaryHeight = boundaryElement.height
-                rightHeight = rightPipe.end_height
-                leftHeight = leftPipe.start_height
-                forwG = boundaryHeight - rightHeight
-                prevG = leftHeight - boundaryHeight
+                rightHeight = rightPipe.heights[1]
+                leftHeight = leftPipe.heights[-2]
+                forwG = rightHeight - boundaryHeight
+                prevG = boundaryHeight - leftHeight
             except Exception as e:
                 print(e)
                 forwG = 0
@@ -206,6 +207,7 @@ for stepNumber in range(1, steps + 1):
             leftNeighbor = pipe.technoNeighbors[0]
         if rightNeighbor in boundaryTechnoIds:
             rightNeighbor = pipe.technoNeighbors[1]
+            pass
 
         boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
             getBoundaryConditions(boundaryDict=boundaryConditions, boundaryObjects=boundaryObjects,

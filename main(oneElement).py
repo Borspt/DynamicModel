@@ -6,32 +6,34 @@ import time
 import os
 import keyboard
 
-JSON = "schemes/schemetest (3) (2pump).json"
+JSON = "schemes/schemetest (3) (branch+fps).json"
 
 with open(JSON, "r", encoding="utf-8") as load_file:
     test_json = json.load(load_file)
 
 elements_dict = {}
 
-PROCESSTIME = 1200
+PROCESSTIME = 500
 TAU = 1
 SOUNDSPEED = 1000
 DENSITY = 850
 INITIAL_VELOCITY = 0.01
-INITIAL_PRESSURE = 30 * g * 10000
+INITIAL_PRESSURE = 40 * g * 10000
 SHOW_GRAPH = True
 SAVE_LOGS = True
 showSpeed = 100
 USER_CHOICE = [123, 129]
-graph_ylim = 3
+graph_ylim = 10
 startStep = 0
+miniStepRatio = 10
 
-all_objects, pipeObjects, boundaryObjects, branchIdList = init_objects(test_json=test_json)
+all_objects, pipeObjects, boundaryObjects, branchIdList, technoObjects, boundaryTechnoIds, pipeTechnoIds = \
+    init_objects(test_json=test_json, tau=TAU)
 
 steps = math.ceil(PROCESSTIME / TAU)
 
 boundaryConditions = calcInitValues(boundaryObjects=boundaryObjects, initialVelocity=INITIAL_VELOCITY,
-                                    initialPressure=INITIAL_PRESSURE, density = DENSITY)
+                                    initialPressure=INITIAL_PRESSURE, density=DENSITY)
 
 for pipe in pipeObjects.values():
     pipe.initMesh(soundSpeed=SOUNDSPEED, steps=steps, tau=1)
@@ -42,7 +44,7 @@ for pipe in pipeObjects.values():
 
     boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
         getBoundaryConditions(boundaryDict=boundaryConditions, boundaryObjects=boundaryObjects,
-                              branchIdList=branchIdList, leftNeighbor=pipe.neighbors[0],
+                              leftNeighbor=pipe.neighbors[0],
                               rightNeighbor=pipe.neighbors[1], pipeId=pipe.id)
 
     pipe.pressureMesh[0][0], pipe.pressureMesh[0][-1] = boundaryLeftPressure, boundaryRightPressure
@@ -61,6 +63,8 @@ for stepNumber in range(1, steps + 1):
     # time.sleep(0.0001)
 
     for boundaryElement in boundaryObjects.values():
+        if boundaryElement.id in boundaryTechnoIds:
+            continue
         if isinstance(boundaryElement, (FlowPressureSetter, Tank)):
             if boundaryElement.start:
                 neighborId = boundaryElement.neighbors[1]
@@ -102,7 +106,7 @@ for stepNumber in range(1, steps + 1):
                     pipeVelocityList.append(pipeVelocity)
                     pipePressureList.append(pipe.pressureMesh[stepNumber - 1][1])
                     try:
-                        pipeGravityFactorList.append((boundaryElement.height - pipe.start_height))
+                        pipeGravityFactorList.append((pipe.heights[1] - boundaryElement.height))
                     except Exception as e:
                         print(e)
                         pipeGravityFactorList.append(0)
@@ -113,7 +117,7 @@ for stepNumber in range(1, steps + 1):
                     pipeVelocityList.append(pipeVelocity)
                     pipePressureList.append(pipe.pressureMesh[stepNumber - 1][-2])
                     try:
-                        pipeGravityFactorList.append((pipe.end_height - boundaryElement.height))
+                        pipeGravityFactorList.append((boundaryElement.height - pipe.heights[-2]))
                     except Exception as e:
                         print(e)
                         pipeGravityFactorList.append(0)
@@ -121,7 +125,7 @@ for stepNumber in range(1, steps + 1):
                     if pipe.isTechnological:
                         pipeResistance = 0
                     else:
-                        pipe.calcResistance(velocity=pipe.calcResistance(velocity=pipeVelocity))
+                        pipeResistance = pipe.calcResistance(velocity=pipe.calcResistance(velocity=pipeVelocity))
                     pipeResistanceList.append(pipeResistance)
                 except Exception as e:
                     print(e)
@@ -139,7 +143,16 @@ for stepNumber in range(1, steps + 1):
                 'pressure': boundaryPressure,
                 'velocity': boundaryVelocity
             }
+        elif isinstance(boundaryElement, TechnologicalObject):
+            boundaryLeftPressure, boundaryRightPressure, boundaryLeftVelocity, boundaryRightVelocity = \
+                boundaryElement.calcBoundaries(soundSpeed=SOUNDSPEED, density=DENSITY, stepNumber=stepNumber,
+                                               globalPipeObjects=pipeObjects)
+            conditions = {
+                'pressure': [boundaryLeftPressure, boundaryRightPressure],
+                'velocity': [boundaryLeftVelocity, boundaryRightVelocity]
+            }
 
+            # boundaryConditions[technoObject.id] = conditions
 
         else:
             leftNeighborId = boundaryElement.neighbors[0]
@@ -150,14 +163,14 @@ for stepNumber in range(1, steps + 1):
             prevVelocity = leftPipe.velocityMesh[stepNumber - 1][-2]
             forwPressure = rightPipe.pressureMesh[stepNumber - 1][1]
             prevPressure = leftPipe.pressureMesh[stepNumber - 1][-2]
-            forwDiameter = leftPipe.innerDiameter
+            forwDiameter = rightPipe.innerDiameter
             prevDiameter = leftPipe.innerDiameter
             try:
                 boundaryHeight = boundaryElement.height
-                rightHeight = rightPipe.start_height
-                leftHeight = leftPipe.end_height
-                forwG = boundaryHeight - rightHeight
-                prevG = leftHeight - boundaryHeight
+                rightHeight = rightPipe.heights[1]
+                leftHeight = leftPipe.heights[-2]
+                forwG = rightHeight - boundaryHeight
+                prevG = boundaryHeight - leftHeight
             except Exception as e:
                 print(e)
                 forwG = 0
@@ -184,11 +197,19 @@ for stepNumber in range(1, steps + 1):
 
     for pipe in pipeObjects.values():
         # print(pipe)
+        if pipe.id in pipeTechnoIds:
+            continue
+
         leftNeighbor = pipe.neighbors[0]
         rightNeighbor = pipe.neighbors[1]
+        if leftNeighbor in boundaryTechnoIds:
+            leftNeighbor = pipe.technoNeighbors[0]
+        if rightNeighbor in boundaryTechnoIds:
+            rightNeighbor = pipe.technoNeighbors[1]
+
         boundaryLeftVelocity, boundaryLeftPressure, boundaryRightVelocity, boundaryRightPressure = \
             getBoundaryConditions(boundaryDict=boundaryConditions, boundaryObjects=boundaryObjects,
-                                  branchIdList=branchIdList, leftNeighbor=leftNeighbor, rightNeighbor=rightNeighbor,
+                                  leftNeighbor=leftNeighbor, rightNeighbor=rightNeighbor,
                                   pipeId=pipe.id)
         pipe.calcStep(soundSpeed=SOUNDSPEED, density=DENSITY, boundaryLeftVelocity=boundaryLeftVelocity,
                       boundaryRightVelocity=boundaryRightVelocity, boundaryLeftPressure=boundaryLeftPressure,
@@ -196,9 +217,9 @@ for stepNumber in range(1, steps + 1):
 calcTimeEnd = time.time()
 print(f'Расчет {steps + 1} шагов произведен за {calcTimeEnd - calcTimeStart} c')
 
-
-
 showPauseTrigger = False
+
+
 def revertPause():
     global showPauseTrigger
     if showPauseTrigger is False:
@@ -209,13 +230,16 @@ def revertPause():
         showPauseTrigger = False
         print('Unpause')
         time.sleep(1)
+
+
 def increaseStep():
     global step
-    step+=1
+    step += 1
+
 
 def decreaseStep():
     global step
-    step-=1
+    step -= 1
 
 
 if SAVE_LOGS:
@@ -224,8 +248,6 @@ if SAVE_LOGS:
         velocity = pipe.velocityMesh
         np.savetxt(f"Logs/Pipe{elementId}.csv", velocity, delimiter=",")
         print(f'Логи по трубе {elementId} сохранены')
-
-
 
 if SHOW_GRAPH:
     plt.ion()
@@ -262,8 +284,6 @@ if SHOW_GRAPH:
             step += 1
         else:
             pass
-
-
 
         timeModel = TAU * step
         dotX = np.array([])
@@ -322,7 +342,6 @@ if SHOW_GRAPH:
         else:
             plt.pause(0.00001)
         # plt.pause(1)
-
 
     # plt.savefig('graph (3 tank + 2 fps) (20Rotor).png')
 
